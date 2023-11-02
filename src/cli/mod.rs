@@ -1,19 +1,22 @@
 use clap::{ArgMatches, Command};
 use crate::lib;
 
-pub mod subcommands;
+pub mod app;
+pub mod folder;
+pub mod item;
+pub mod library;
 
 pub fn get_matches() -> ArgMatches {
-    Command::new("eaglemaster")
+    Command::new("eagle-eye")
         .about("Tool for managing Eagle")
         .version("0.1.0")
         .author("Oleksii Luchnikov <oleksiiluchnikov@gmail.com>")
         .arg_required_else_help(true)
 
-        .subcommand(subcommands::app::build())
-        .subcommand(subcommands::folder::build())
-        .subcommand(subcommands::item::build())
-        .subcommand(subcommands::library::build())
+        .subcommand(app::build())
+        .subcommand(folder::build())
+        .subcommand(item::build())
+        .subcommand(library::build())
         .get_matches()
 }
 
@@ -24,19 +27,20 @@ pub async fn execute() -> Result<(), Box<dyn std::error::Error>> {
     // Handle rename subcommand
     match matches.subcommand() {
         Some(("app", app_matches)) => {
-            subcommands::app::execute(&eagle_client, app_matches).await?;
+            app::execute(&eagle_client, app_matches).await?;
         },
         Some(("folder", folder_matches)) => {
-            subcommands::folder::execute(&eagle_client, folder_matches).await?;
+            folder::execute(&eagle_client, folder_matches).await?;
         },
-        // Some(("item", item_matches)) => {
-        //     subcommands::item::execute(eagle_client, item_matches).await?;
-        // },
+        Some(("item", item_matches)) => {
+            item::execute(&eagle_client, item_matches).await?;
+        },
         Some(("library", library_matches)) => {
-            subcommands::library::execute(&eagle_client, library_matches).await?;
+            library::execute(&eagle_client, library_matches).await?;
         },
         _ => {
             println!("No subcommand was used");
-        }    }
+        }    
+    }
     Ok(())
 }

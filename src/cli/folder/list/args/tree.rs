@@ -1,6 +1,6 @@
 use clap::builder::styling::AnsiColor;
 use crate::lib::types::*;
-use crate::cli::subcommands::folder::list::ListOptions;
+use crate::cli::folder::list::ListOptions;
 
 pub fn print_folder_tree(
     folder: Option<&Child>,
@@ -21,7 +21,7 @@ pub fn print_folder_tree(
     let (_, color_code) = colors[depth % colors.len()];
 
     let (corner, vertical_line) = if last {
-        ("└── ", "    ") 
+        ("╰── ", "    ")
     } else {
         ("├── ", "│   ") 
     };

@@ -4,6 +4,7 @@ use hyper::{Body, Method};
 use super::types::*;
 use std::error::Error;
 use std::path::Path;
+use hyper::Uri;
 
 
 // Application
@@ -19,7 +20,7 @@ impl<'a> ApplicationRequest<'a> {
         }
     }
     pub async fn info(&self) -> Result<GetApplicationInfoResult, Box<dyn Error>> {
-        let uri = self.client.endpoint(Self::RESOURCE, "info")?;
+        let uri = self.client.endpoint(Self::RESOURCE, "info", None)?;
         self.client.execute_request(uri, Method::GET, Body::empty()).await
     }
 }
@@ -43,7 +44,7 @@ impl<'a> FolderRequest<'a> {
     }
 
     pub async fn list(&self) -> Result<GetFolderListResult, Box<dyn Error>> {
-        let uri = self.client.endpoint(Self::RESOURCE, "list")?;
+        let uri: Uri = self.client.endpoint(Self::RESOURCE, "list", None)?;
         self.client.execute_request(uri, Method::GET, Body::empty()).await
     }
 
@@ -56,7 +57,7 @@ impl<'a> FolderRequest<'a> {
             "folder_id": folder_id,
             "new_name": new_name,
         });
-        let uri = self.client.endpoint(Self::RESOURCE, "rename")?;
+        let uri = self.client.endpoint(Self::RESOURCE, "rename", None)?;
         self.client.execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?)).await
     }
 }
@@ -74,8 +75,18 @@ impl<'a> ItemRequest<'a> {
         ItemRequest { client }
     }
 
-    pub async fn list(&self) -> Result<GetItemListResult, Box<dyn Error>> {
-        let uri = self.client.endpoint(Self::RESOURCE, "list")?;
+    pub async fn info(&self, query_params: GetItemInfoParams) -> Result<GetItemInfoResult, Box<dyn Error>> {
+        let uri: Uri = self.client.endpoint(Self::RESOURCE, "info", Some(query_params.to_query_string()))?;
+        self.client.execute_request(uri, Method::GET, Body::empty()).await
+    }
+
+    pub async fn list(&self, query_params: GetItemListParams) -> Result<GetItemListResult, Box<dyn Error>> {
+        let uri = self.client.endpoint(Self::RESOURCE, "list", Some(query_params.to_query_string()))?;
+        self.client.execute_request(uri, Method::GET, Body::empty()).await
+    }
+
+    pub async fn thumbnail(&self, query_params: GetItemThumbnailParams) -> Result<GetItemThumbnailResult, Box<dyn Error>> {
+        let uri: Uri = self.client.endpoint(Self::RESOURCE, "thumbnail", Some(query_params.to_query_string()))?;
         self.client.execute_request(uri, Method::GET, Body::empty()).await
     }
 }
@@ -98,12 +109,12 @@ impl<'a> LibraryRequest<'a> {
     }
 
     pub async fn info(&self) -> Result<GetLibraryInfoResult, Box<dyn Error>> {
-        let uri = self.client.endpoint(Self::RESOURCE, "info")?;
+        let uri = self.client.endpoint(Self::RESOURCE, "info", None)?;
         self.client.execute_request(uri, Method::GET, Body::empty()).await
     }
 
     pub async fn history(&self) -> Result<GetLibraryHistoryResult, Box<dyn Error>> {
-        let uri = self.client.endpoint(Self::RESOURCE, "history")?;
+        let uri = self.client.endpoint(Self::RESOURCE, "history", None)?;
         self.client.execute_request(uri, Method::GET, Body::empty()).await
     }
 
@@ -114,7 +125,7 @@ impl<'a> LibraryRequest<'a> {
         let data = json!({
             "library_path": library_path,
         });
-        let uri = self.client.endpoint(Self::RESOURCE, "switch")?;
+        let uri = self.client.endpoint(Self::RESOURCE, "switch", None)?;
         self.client.execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?)).await
     }
 }

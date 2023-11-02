@@ -1,6 +1,20 @@
 use serde_json::Value;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
+use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
+
+pub trait QueryParams {
+    fn to_query_string(&self) -> String;
+}
+impl QueryParams for HashMap<&str, &str> {
+    fn to_query_string(&self) -> String {
+        self.iter()
+            .map(|(key, value)| format!("{}={}", key, value))
+            .collect::<Vec<String>>()
+            .join("&")
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub enum Status {
@@ -101,7 +115,7 @@ pub struct CreateFolderData {
     #[serde(rename = "isExpand")]
     pub is_expand: bool,
 }
-    
+
 
 #[derive(Debug, Deserialize)]
 pub struct RenameFolderResult {
@@ -171,6 +185,8 @@ pub struct UpdateFolderData {
 }
 
 // TODO: Implement this DeleteFolderResult
+//
+
 
 #[derive(Debug, Deserialize)]
 pub struct GetFolderListResult {
@@ -274,6 +290,28 @@ pub struct AddBookmarkResult {
     pub status: Status,
 }
 
+#[derive(Debug, Serialize)]
+pub struct GetItemInfoParams {
+    pub id: String,
+}
+
+impl QueryParams for GetItemInfoParams {
+    fn to_query_string(&self) -> String {
+        let fields: [(&str, &String); 1] = [
+            ("id", &self.id),
+        ];
+
+        let query_params: Vec<String> = fields
+            .iter()
+            .filter_map(|&(param_name, param)| {
+                Some(format!("{}={}", param_name, percent_encode(param.as_bytes(), NON_ALPHANUMERIC).to_string()))
+            })
+            .collect();
+
+        query_params.join("&")
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct GetItemInfoResult {
     pub status: Status,
@@ -287,7 +325,7 @@ pub struct ItemInfoData {
     pub size: u64,
     pub ext: String,
     pub tags: Vec<String>,
-    pub folders: Vec<String>,
+    pub folders: Option<Vec<String>>,
     #[serde(rename = "isDeleted")]
     pub is_deleted: bool,
     pub url: String,
@@ -297,7 +335,7 @@ pub struct ItemInfoData {
     pub width: u64,
     pub height: u64,
     #[serde(rename = "noThumbnail")]
-    pub no_thumbnail: bool,
+    pub no_thumbnail: Option<bool>,
     #[serde(rename = "lastModified")]
     pub last_modified: u64,
     pub palettes: Vec<Palettes>,
@@ -306,9 +344,32 @@ pub struct ItemInfoData {
 #[derive(Debug, Deserialize)]
 pub struct Palettes {
     pub color: Vec<u64>,
-    pub ratio: u64,
+    // pub ratio: u64, // or f64
+    pub ratio: f64,
     #[serde(rename = "$$hashKey")]
-    pub hash_key_: String,
+    pub hash_key_: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GetItemThumbnailParams {
+    pub id: String,
+}
+
+impl QueryParams for GetItemThumbnailParams {
+    fn to_query_string(&self) -> String {
+        let fields: [(&str, &String); 1] = [
+            ("id", &self.id),
+        ];
+
+        let query_params: Vec<String> = fields
+            .iter()
+            .filter_map(|&(param_name, param)| {
+                Some(format!("{}={}", param_name, percent_encode(param.as_bytes(), NON_ALPHANUMERIC).to_string()))
+            })
+            .collect();
+
+        query_params.join("&")
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -317,20 +378,10 @@ pub struct GetItemThumbnailResult {
     pub data: String,
 }
 
-// TODO: Implemen Order
+pub type ItemThumbnailData = String;
 
-// export type Order = {
-//     manual: "MANUAL";
-//     createDateAsc: "CREATEDATE";
-//     createDateDesc: "-CREATEDATE";
-//     fileSizeAsc: "FILESIZE";
-//     fileSizeDesc: "-FILESIZE";
-//     nameAsc: "NAME";
-//     nameDesc: "-NAME";
-//     resolutionAsc: "RESOLUTION";
-//     resolutionDesc: "-RESOLUTION";
-// };
-#[derive(Debug, Deserialize)]
+
+#[derive(Debug, Deserialize, Serialize)]
 pub enum Order {
     MANUAL,
     CREATEDATE,
@@ -345,9 +396,9 @@ pub enum Order {
     RESOLUTIONREVERSE,
 }
 
-impl Order {
-    pub fn as_str(&self) -> &'static str {
-        match *self {
+impl fmt::Display for Order {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let value = match self {
             Order::MANUAL => "MANUAL",
             Order::CREATEDATE => "CREATEDATE",
             Order::CREATEDATEDESC => "-CREATEDATE",
@@ -359,10 +410,70 @@ impl Order {
             Order::NAMEREVERSE => "-NAME",
             Order::RESOLUTION => "RESOLUTION",
             Order::RESOLUTIONREVERSE => "-RESOLUTION",
+        };
+        write!(f, "{}", value)
+    }
+}
+
+
+
+/// Represents the parameters for the `/api/item/list` request.
+#[derive(Debug, Serialize)]
+pub struct GetItemListParams {
+    /// The number of items to be displayed. The default number is 200.
+    pub limit: Option<usize>,
+    /// Offset a collection of results from the API. Start with 0.
+    pub offset: Option<usize>,
+    /// The sorting order. Use "CREATEDATE", "FILESIZE", "NAME", "RESOLUTION", or add a minus sign for descending order: "-FILESIZE".
+    pub order_by: Option<Order>,
+    /// Filter by the keyword.
+    pub keyword: Option<String>,
+    /// Filter by the extension type, e.g., "jpg", "png".
+    pub ext: Option<String>,
+    /// Filter by tags. Use a comma to divide different tags. E.g., "Design, Poster".
+    pub tags: Option<String>,
+    /// Filter by Folders. Use a comma to divide folder IDs. E.g., "KAY6NTU6UYI5Q,KBJ8Z60O88VMG".
+    pub folders: Option<String>,
+}
+
+impl GetItemListParams {
+    pub fn new() -> Self {
+        GetItemListParams {
+            limit: None,
+            offset: None,
+            order_by: None,
+            keyword: None,
+            ext: None,
+            tags: None,
+            folders: None,
         }
     }
 }
-    
+
+impl QueryParams for GetItemListParams {
+    fn to_query_string(&self) -> String {
+        let fields: [(&str, Option<String>); 7] = [
+            ("limit", self.limit.as_ref().map(|value| value.to_string())),
+            ("offset", self.offset.as_ref().map(|value| value.to_string())),
+            ("order_by", self.order_by.as_ref().map(|value| value.to_string())),
+            ("keyword", self.keyword.as_ref().map(|value| value.to_string())),
+            ("ext", self.ext.as_ref().map(|value| value.to_string())),
+            ("tags", self.tags.as_ref().map(|value| value.to_string())),
+            ("folders", self.folders.as_ref().map(|value| value.to_string())),
+            
+        ];
+
+        let query_params: Vec<String> = fields
+            .iter()
+            .filter_map(|(param_name, param)| {
+                param.as_ref().map(|value| format!("{}={}", param_name, percent_encode(value.as_bytes(), NON_ALPHANUMERIC).to_string()))
+            })
+            .collect();
+
+        query_params.join("&") // e.g., "limit=10&offset=0"
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct GetItemListResult {
     pub status: Status,
@@ -376,18 +487,18 @@ pub struct ItemListData {
     pub size: u64,
     pub ext: String,
     pub tags: Vec<String>,
-    pub folders: Vec<String>,
+    pub folders: Option<Vec<String>>,
     #[serde(rename = "isDeleted")]
     pub is_deleted: bool,
     pub url: String,
     pub annotation: String,
     #[serde(rename = "modificationTime")]
     pub modification_time: u64,
-    pub height: u64,
-    pub width: u64,
+    pub height: Option<u64>,
+    pub width: Option<u64>,
     #[serde(rename = "lastModified")]
-    pub last_modified: u64,
-    pub palettes: Vec<Palettes>,
+    pub last_modified: Option<u64>,
+    pub palettes: Option<Vec<Palettes>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -412,8 +523,6 @@ pub struct UpdateItemResult {
     pub data: ItemInfoData,
 }
 
-
-
 /// Get Library Info
 #[derive(Debug, Deserialize)]
 pub struct GetLibraryInfoResult {
@@ -434,6 +543,13 @@ pub struct LibraryInfoData {
     pub modification_time: u64,
     #[serde(rename = "applicationVersion")]
     pub application_version: String,
+    pub library: LibraryData,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LibraryData {
+    pub path: String,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -542,3 +658,9 @@ pub struct SwitchLibraryResult {
 //     port: u16,
 //     url: String,
 // }
+
+#[derive(Debug, Deserialize)]
+pub struct LibraryHistoryData {
+    pub path: String,
+    pub name: String,
+}

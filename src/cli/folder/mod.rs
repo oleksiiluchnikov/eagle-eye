@@ -2,7 +2,6 @@ pub mod list;
 pub mod rename;
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, ArgAction, Command};
-use crate::lib::types::*;
 
 
 pub fn build() -> Command {
@@ -90,44 +89,7 @@ pub fn build() -> Command {
                     )
                 )
 
-            .subcommand(
-                Command::new("list")
-                .about("List folders")
-
-                .arg(
-                    Arg::new("root_folder")
-                    .short('r')
-                    .long("root")
-                    .help("Specify root folder")
-                    .required(false)
-                    .default_value("")
-                    )
-
-                .arg(
-                    Arg::new("tree")
-                    .short('t')
-                    .long("tree")
-                    .help("Show folder tree")
-                    .action(ArgAction::SetTrue)
-                    )
-
-                .arg(
-                    Arg::new("nesting_level")
-                    .short('n')
-                    .long("nesting-level")
-                    .help("Specify nesting level")
-                    .required(false)
-                    .default_value("0")
-                    )
-
-                .arg(
-                    Arg::new("recursive")
-                    .short('R')
-                    .long("recursive")
-                    .help("Show folder tree recursively")
-                    .action(ArgAction::SetTrue)
-                    )
-                )
+            .subcommand(list::build())
 }
 
 pub async fn execute(
