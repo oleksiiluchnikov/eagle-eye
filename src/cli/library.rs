@@ -1,5 +1,6 @@
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
+use serde_json;
 
 pub struct App;
 
@@ -12,13 +13,13 @@ impl App {
 pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let data = client.library().info().await?.data;
 
     match matches.subcommand() {
         Some(("info", info_matches)) => {
             if info_matches.get_flag("folders") {
-                println!("{:?}", data.folders);
+                println!("{}", serde_json::to_string_pretty(&data.folders).unwrap());
             } else if info_matches.get_flag("smart_folders") {
                 println!("{:?}", data.smart_folders);
             } else if info_matches.get_flag("quick_access") {
@@ -30,13 +31,13 @@ pub async fn execute(
             } else {
                 println!("{:?}", data);
             }
-        },
-        Some(("history", history_matches)) => {
+        }
+        Some(("history", _)) => {
             todo!();
-        },
-        Some(("switch", switch_matches)) => {
+        }
+        Some(("switch", _)) => {
             todo!();
-        },
+        }
         Some(("library", library_matches)) => {
             if library_matches.get_flag("path") {
                 println!("{}", data.library.path);
@@ -45,9 +46,8 @@ pub async fn execute(
             } else {
                 println!("{:?}", data.library);
             }
-        },
-        _ => {
         }
+        _ => {}
     }
     Ok(())
 }
@@ -57,82 +57,76 @@ pub fn build() -> Command {
         .about("Library")
         .subcommand(
             Command::new("info")
-            .about("Library info")
-            .arg(
-                Arg::new("folders")
-                .short('f')
-                .long("folders")
-                .help("Show folders")
-                .num_args(0)
-                )
-            .arg(
-                Arg::new("smart_folders")
-                .short('s')
-                .long("smart-folders")
-                .help("Show smart folders")
-                .action(clap::ArgAction::SetTrue)
-                .num_args(0)
-                )
-            .arg(
-                Arg::new("quick_access")
-                .short('q')
-                .long("quick-access")
-                .help("Show quick access")
-                .action(clap::ArgAction::SetTrue)
-                .num_args(0)
-                )
-            .arg(
-                Arg::new("tags_groups")
-                .short('t')
-                .long("tags-groups")
-                .help("Show tags groups")
-                .action(clap::ArgAction::SetTrue)
-                .num_args(0)
-                )
-            .arg(
-                Arg::new("modification_time")
-                .short('m')
-                .long("modification-time")
-                .help("Show modification time")
-                .action(clap::ArgAction::SetTrue)
-                .num_args(0)
-                )
-            )
-            .subcommand(
-                Command::new("history")
-                .about("Library history")
-                )
-            .subcommand(
-                Command::new("switch")
-                .about("Switch library")
+                .about("Library info")
                 .arg(
-                    Arg::new("path")
+                    Arg::new("folders")
+                        .short('f')
+                        .long("folders")
+                        .help("Show folders")
+                        .num_args(0),
+                )
+                .arg(
+                    Arg::new("smart_folders")
+                        .short('s')
+                        .long("smart-folders")
+                        .help("Show smart folders")
+                        .action(clap::ArgAction::SetTrue)
+                        .num_args(0),
+                )
+                .arg(
+                    Arg::new("quick_access")
+                        .short('q')
+                        .long("quick-access")
+                        .help("Show quick access")
+                        .action(clap::ArgAction::SetTrue)
+                        .num_args(0),
+                )
+                .arg(
+                    Arg::new("tags_groups")
+                        .short('t')
+                        .long("tags-groups")
+                        .help("Show tags groups")
+                        .action(clap::ArgAction::SetTrue)
+                        .num_args(0),
+                )
+                .arg(
+                    Arg::new("modification_time")
+                        .short('m')
+                        .long("modification-time")
+                        .help("Show modification time")
+                        .action(clap::ArgAction::SetTrue)
+                        .num_args(0),
+                ),
+        )
+        .subcommand(Command::new("history").about("Library history"))
+        .subcommand(
+            Command::new("switch").about("Switch library").arg(
+                Arg::new("path")
                     .short('p')
                     .long("path")
                     .help("Library path")
                     .required(true)
-                    .num_args(1)
-                    )
-                )
-            .subcommand(
-                Command::new("library")
+                    .num_args(1),
+            ),
+        )
+        .subcommand(
+            Command::new("library")
                 .about("Library")
                 .arg(
                     Arg::new("path")
-                    .short('p')
-                    .long("path")
-                    .help("Current working library path")
-                    .required(false)
-                    .num_args(0)
-                    )
+                        .short('p')
+                        .long("path")
+                        .help("Current working library path")
+                        .required(false)
+                        .num_args(0),
+                )
                 .arg(
                     Arg::new("name")
-                    .short('n')
-                    .long("name")
-                    .help("Current working library name")
-                    .required(false)
-                    .num_args(0)
-                    )
-                )
-
+                        .short('n')
+                        .long("name")
+                        .help("Current working library name")
+                        .required(false)
+                        .num_args(0),
+                ),
+        )
 }
