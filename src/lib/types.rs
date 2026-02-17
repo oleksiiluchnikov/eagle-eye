@@ -208,49 +208,46 @@ pub struct FolderListData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct GetRecentFolderListResult {
     pub status: Status,
     pub data: Vec<RecentFolderListData>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct RecentFolderListData {
     pub id: String,
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub children: Vec<Child>,
     #[serde(rename = "modificationTime")]
     pub modification_time: u64,
     pub tags: Vec<String>,
-    pub password: String,
+    pub password: Option<String>,
     #[serde(rename = "passwordTips")]
-    pub password_tips: String,
-    pub images: Vec<Value>,
+    pub password_tips: Option<String>,
+    pub images: Option<Vec<Value>>,
     #[serde(rename = "isExpand")]
-    pub is_expand: bool,
+    pub is_expand: Option<bool>,
     #[serde(rename = "newFolderName")]
-    pub new_folder_name: String,
+    pub new_folder_name: Option<String>,
     #[serde(rename = "imagesMappings")]
-    pub images_mappings: Value,
+    pub images_mappings: Option<Value>,
     #[serde(rename = "imageCount")]
-    pub image_count: u64,
+    pub image_count: Option<u64>,
     #[serde(rename = "descendantImageCount")]
     pub descendant_image_count: Option<u64>,
-    pub pinyin: String,
+    pub pinyin: Option<String>,
     #[serde(rename = "extendTags")]
-    pub extend_tags: Vec<String>,
+    pub extend_tags: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct AddItemFromUrlResult {
     pub status: Status,
 }
 
+/// Represents a single item for batch URL import via `/api/item/addFromURLs`.
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct Item {
     pub url: String,
     pub name: Option<String>,
@@ -259,33 +256,39 @@ pub struct Item {
     pub tags: Option<Vec<String>>,
     #[serde(rename = "modificationTime")]
     pub modification_time: Option<u64>,
-    // OutgoingHttpHeaders is a type alias for OutgoingHttpHeaders
     pub headers: Option<OutgoingHttpHeaders>,
 }
 
-#[allow(dead_code)]
 pub type OutgoingHttpHeaders = HashMap<String, String>;
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct AddItemFromUrlsResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct AddItemFromPathResult {
     pub status: Status,
 }
 
+/// Represents a single item for batch path import via `/api/item/addFromPaths`.
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
+pub struct PathItem {
+    pub path: String,
+    pub name: String,
+    pub website: Option<String>,
+    pub annotation: Option<String>,
+    pub tags: Option<Vec<String>>,
+    #[serde(rename = "folderId")]
+    pub folder_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddItemFromPathsResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct AddBookmarkResult {
     pub status: Status,
 }
@@ -519,19 +522,16 @@ pub struct MoveItemToTrashResult {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct RefreshItemPaletteResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct RefreshThumbnailResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct UpdateItemResult {
     pub status: Status,
     pub data: ItemInfoData,

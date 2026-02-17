@@ -87,6 +87,14 @@ impl<'a> FolderRequest<'a> {
             .await
     }
 
+    /// List recently used folders.
+    pub async fn list_recent(&self) -> Result<GetRecentFolderListResult, Box<dyn Error>> {
+        let uri = self.client.endpoint(Self::RESOURCE, "listRecent", None)?;
+        self.client
+            .execute_request(uri, Method::GET, Body::empty())
+            .await
+    }
+
     /// Update a folder's properties.
     ///
     /// - `folder_id`: ID of the folder to update.
@@ -167,6 +175,222 @@ impl<'a> ItemRequest<'a> {
         )?;
         self.client
             .execute_request(uri, Method::GET, Body::empty())
+            .await
+    }
+
+    /// Update an item's properties.
+    ///
+    /// - `id`: ID of the item to update.
+    /// - `tags`: Optional new tags.
+    /// - `annotation`: Optional new annotation.
+    /// - `url`: Optional new source URL.
+    /// - `star`: Optional star rating (0-5).
+    pub async fn update(
+        &self,
+        id: &str,
+        tags: Option<&[String]>,
+        annotation: Option<&str>,
+        url: Option<&str>,
+        star: Option<u8>,
+    ) -> Result<UpdateItemResult, Box<dyn Error>> {
+        let mut data = json!({ "id": id });
+        if let Some(tags) = tags {
+            data["tags"] = json!(tags);
+        }
+        if let Some(annotation) = annotation {
+            data["annotation"] = json!(annotation);
+        }
+        if let Some(url) = url {
+            data["url"] = json!(url);
+        }
+        if let Some(star) = star {
+            data["star"] = json!(star);
+        }
+        let uri = self.client.endpoint(Self::RESOURCE, "update", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
+            .await
+    }
+
+    /// Add an item from a URL.
+    ///
+    /// - `url`: The URL to download from.
+    /// - `name`: Display name for the item.
+    /// - `website`: Optional source website URL.
+    /// - `tags`: Optional tags.
+    /// - `annotation`: Optional annotation.
+    /// - `folder_id`: Optional target folder ID.
+    pub async fn add_from_url(
+        &self,
+        url: &str,
+        name: &str,
+        website: Option<&str>,
+        tags: Option<&[String]>,
+        annotation: Option<&str>,
+        folder_id: Option<&str>,
+    ) -> Result<AddItemFromUrlResult, Box<dyn Error>> {
+        let mut data = json!({
+            "url": url,
+            "name": name,
+        });
+        if let Some(website) = website {
+            data["website"] = json!(website);
+        }
+        if let Some(tags) = tags {
+            data["tags"] = json!(tags);
+        }
+        if let Some(annotation) = annotation {
+            data["annotation"] = json!(annotation);
+        }
+        if let Some(folder_id) = folder_id {
+            data["folderId"] = json!(folder_id);
+        }
+        let uri = self.client.endpoint(Self::RESOURCE, "addFromURL", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
+            .await
+    }
+
+    /// Add multiple items from URLs.
+    ///
+    /// - `items`: Array of item objects (each with url, name, and optional fields).
+    /// - `folder_id`: Optional target folder ID for all items.
+    pub async fn add_from_urls(
+        &self,
+        items: &[Item],
+        folder_id: Option<&str>,
+    ) -> Result<AddItemFromUrlsResult, Box<dyn Error>> {
+        let mut data = json!({ "items": items });
+        if let Some(folder_id) = folder_id {
+            data["folderId"] = json!(folder_id);
+        }
+        let uri = self.client.endpoint(Self::RESOURCE, "addFromURLs", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
+            .await
+    }
+
+    /// Add an item from a local file path.
+    ///
+    /// - `path`: Local filesystem path to the file.
+    /// - `name`: Display name for the item.
+    /// - `website`: Optional source website URL.
+    /// - `annotation`: Optional annotation.
+    /// - `tags`: Optional tags.
+    /// - `folder_id`: Optional target folder ID.
+    pub async fn add_from_path(
+        &self,
+        path: &Path,
+        name: &str,
+        website: Option<&str>,
+        annotation: Option<&str>,
+        tags: Option<&[String]>,
+        folder_id: Option<&str>,
+    ) -> Result<AddItemFromPathResult, Box<dyn Error>> {
+        let mut data = json!({
+            "path": path.to_string_lossy(),
+            "name": name,
+        });
+        if let Some(website) = website {
+            data["website"] = json!(website);
+        }
+        if let Some(annotation) = annotation {
+            data["annotation"] = json!(annotation);
+        }
+        if let Some(tags) = tags {
+            data["tags"] = json!(tags);
+        }
+        if let Some(folder_id) = folder_id {
+            data["folderId"] = json!(folder_id);
+        }
+        let uri = self.client.endpoint(Self::RESOURCE, "addFromPath", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
+            .await
+    }
+
+    /// Add multiple items from local file paths.
+    ///
+    /// - `items`: Array of path item objects.
+    /// - `folder_id`: Optional target folder ID for all items.
+    pub async fn add_from_paths(
+        &self,
+        items: &[PathItem],
+        folder_id: Option<&str>,
+    ) -> Result<AddItemFromPathsResult, Box<dyn Error>> {
+        let mut data = json!({ "items": items });
+        if let Some(folder_id) = folder_id {
+            data["folderId"] = json!(folder_id);
+        }
+        let uri = self.client.endpoint(Self::RESOURCE, "addFromPaths", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
+            .await
+    }
+
+    /// Add a bookmark.
+    ///
+    /// - `url`: The URL of the bookmark.
+    /// - `name`: Display name for the bookmark.
+    /// - `base64`: Optional base64-encoded thumbnail image.
+    /// - `tags`: Optional tags.
+    /// - `folder_id`: Optional target folder ID.
+    pub async fn add_bookmark(
+        &self,
+        url: &str,
+        name: &str,
+        base64: Option<&str>,
+        tags: Option<&[String]>,
+        folder_id: Option<&str>,
+    ) -> Result<AddBookmarkResult, Box<dyn Error>> {
+        let mut data = json!({
+            "url": url,
+            "name": name,
+        });
+        if let Some(base64) = base64 {
+            data["base64"] = json!(base64);
+        }
+        if let Some(tags) = tags {
+            data["tags"] = json!(tags);
+        }
+        if let Some(folder_id) = folder_id {
+            data["folderId"] = json!(folder_id);
+        }
+        let uri = self.client.endpoint(Self::RESOURCE, "addBookmark", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
+            .await
+    }
+
+    /// Refresh the color palette of an item.
+    ///
+    /// - `id`: ID of the item.
+    pub async fn refresh_palette(
+        &self,
+        id: &str,
+    ) -> Result<RefreshItemPaletteResult, Box<dyn Error>> {
+        let data = json!({ "id": id });
+        let uri = self
+            .client
+            .endpoint(Self::RESOURCE, "refreshPalette", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
+            .await
+    }
+
+    /// Refresh the thumbnail of an item.
+    ///
+    /// - `id`: ID of the item.
+    pub async fn refresh_thumbnail(
+        &self,
+        id: &str,
+    ) -> Result<RefreshThumbnailResult, Box<dyn Error>> {
+        let data = json!({ "id": id });
+        let uri = self
+            .client
+            .endpoint(Self::RESOURCE, "refreshThumbnail", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
             .await
     }
 }
