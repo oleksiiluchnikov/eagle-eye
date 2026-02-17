@@ -420,7 +420,7 @@ impl fmt::Display for Order {
 }
 
 /// Represents the parameters for the `/api/item/list` request.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct GetItemListParams {
     /// The number of items to be displayed. The default number is 200.
     pub limit: Option<usize>,
@@ -440,15 +440,7 @@ pub struct GetItemListParams {
 
 impl GetItemListParams {
     pub fn new() -> Self {
-        GetItemListParams {
-            limit: None,
-            offset: None,
-            order_by: None,
-            keyword: None,
-            ext: None,
-            tags: None,
-            folders: None,
-        }
+        Self::default()
     }
 }
 
@@ -647,4 +639,469 @@ pub struct GetLibraryHistoryResult {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SwitchLibraryResult {
     pub status: Status,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // Order Display Tests
+    // =========================================================================
+
+    #[test]
+    fn order_display_manual() {
+        assert_eq!(Order::MANUAL.to_string(), "MANUAL");
+    }
+
+    #[test]
+    fn order_display_createdate() {
+        assert_eq!(Order::CREATEDATE.to_string(), "CREATEDATE");
+    }
+
+    #[test]
+    fn order_display_createdate_desc() {
+        assert_eq!(Order::CREATEDATEDESC.to_string(), "-CREATEDATE");
+    }
+
+    #[test]
+    fn order_display_btime() {
+        assert_eq!(Order::BTIME.to_string(), "BTIME");
+    }
+
+    #[test]
+    fn order_display_mtime() {
+        assert_eq!(Order::MTIME.to_string(), "MTIME");
+    }
+
+    #[test]
+    fn order_display_filesize() {
+        assert_eq!(Order::FILESIZE.to_string(), "FILESIZE");
+    }
+
+    #[test]
+    fn order_display_filesize_reverse() {
+        assert_eq!(Order::FILESIZEREVERSE.to_string(), "-FILESIZE");
+    }
+
+    #[test]
+    fn order_display_name() {
+        assert_eq!(Order::NAME.to_string(), "NAME");
+    }
+
+    #[test]
+    fn order_display_name_reverse() {
+        assert_eq!(Order::NAMEREVERSE.to_string(), "-NAME");
+    }
+
+    #[test]
+    fn order_display_resolution() {
+        assert_eq!(Order::RESOLUTION.to_string(), "RESOLUTION");
+    }
+
+    #[test]
+    fn order_display_resolution_reverse() {
+        assert_eq!(Order::RESOLUTIONREVERSE.to_string(), "-RESOLUTION");
+    }
+
+    // =========================================================================
+    // QueryParams Tests - GetItemListParams
+    // =========================================================================
+
+    #[test]
+    fn item_list_params_all_none() {
+        let params = GetItemListParams::new();
+        assert_eq!(params.to_query_string(), "");
+    }
+
+    #[test]
+    fn item_list_params_limit_only() {
+        let params = GetItemListParams {
+            limit: Some(50),
+            ..Default::default()
+        };
+        assert_eq!(params.to_query_string(), "limit=50");
+    }
+
+    #[test]
+    fn item_list_params_offset_only() {
+        let params = GetItemListParams {
+            offset: Some(100),
+            ..Default::default()
+        };
+        assert_eq!(params.to_query_string(), "offset=100");
+    }
+
+    #[test]
+    fn item_list_params_order_by_only() {
+        let params = GetItemListParams {
+            order_by: Some(Order::FILESIZE),
+            ..Default::default()
+        };
+        assert_eq!(params.to_query_string(), "orderBy=FILESIZE");
+    }
+
+    #[test]
+    fn item_list_params_order_by_reverse() {
+        let params = GetItemListParams {
+            order_by: Some(Order::FILESIZEREVERSE),
+            ..Default::default()
+        };
+        // The `-` character gets percent-encoded to `%2D` which is correct
+        assert_eq!(params.to_query_string(), "orderBy=%2DFILESIZE");
+    }
+
+    #[test]
+    fn item_list_params_keyword_with_special_chars() {
+        let params = GetItemListParams {
+            keyword: Some("hello world & more".to_string()),
+            ..Default::default()
+        };
+        assert!(params.to_query_string().contains("keyword="));
+        // Special chars should be percent-encoded
+        assert!(params.to_query_string().contains("%26")); // & encoded
+    }
+
+    #[test]
+    fn item_list_params_multiple_fields() {
+        let params = GetItemListParams {
+            limit: Some(25),
+            offset: Some(50),
+            order_by: Some(Order::CREATEDATE),
+            ..Default::default()
+        };
+        let query = params.to_query_string();
+        assert!(query.contains("limit=25"));
+        assert!(query.contains("offset=50"));
+        assert!(query.contains("orderBy=CREATEDATE"));
+    }
+
+    #[test]
+    fn item_list_params_ext_filter() {
+        let params = GetItemListParams {
+            ext: Some("png".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(params.to_query_string(), "ext=png");
+    }
+
+    #[test]
+    fn item_list_params_tags_filter() {
+        let params = GetItemListParams {
+            tags: Some("Design, Poster".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(params.to_query_string(), "tags=Design%2C%20Poster");
+    }
+
+    #[test]
+    fn item_list_params_folders_filter() {
+        let params = GetItemListParams {
+            folders: Some("KAY6NTU6UYI5Q,KBJ8Z60O88VMG".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(
+            params.to_query_string(),
+            "folders=KAY6NTU6UYI5Q%2CKBJ8Z60O88VMG"
+        );
+    }
+
+    // =========================================================================
+    // QueryParams Tests - GetItemInfoParams
+    // =========================================================================
+
+    #[test]
+    fn item_info_params_basic() {
+        let params = GetItemInfoParams {
+            id: "ABC123".to_string(),
+        };
+        assert_eq!(params.to_query_string(), "id=ABC123");
+    }
+
+    #[test]
+    fn item_info_params_with_special_chars() {
+        let params = GetItemInfoParams {
+            id: "folder/name".to_string(),
+        };
+        assert_eq!(params.to_query_string(), "id=folder%2Fname");
+    }
+
+    // =========================================================================
+    // QueryParams Tests - GetItemThumbnailParams
+    // =========================================================================
+
+    #[test]
+    fn item_thumbnail_params_basic() {
+        let params = GetItemThumbnailParams {
+            id: "XYZ789".to_string(),
+        };
+        assert_eq!(params.to_query_string(), "id=XYZ789");
+    }
+
+    // =========================================================================
+    // QueryParams Tests - HashMap
+    // =========================================================================
+
+    #[test]
+    fn hashmap_params_empty() {
+        let map: HashMap<&str, &str> = HashMap::new();
+        assert_eq!(map.to_query_string(), "");
+    }
+
+    #[test]
+    fn hashmap_params_single() {
+        let mut map = HashMap::new();
+        map.insert("key", "value");
+        assert_eq!(map.to_query_string(), "key=value");
+    }
+
+    #[test]
+    fn hashmap_params_multiple() {
+        let mut map = HashMap::new();
+        map.insert("a", "1");
+        map.insert("b", "2");
+        // HashMap iteration order is not guaranteed, so check both possibilities
+        let result = map.to_query_string();
+        assert!(result == "a=1&b=2" || result == "b=2&a=1");
+    }
+
+    // =========================================================================
+    // Serde Round-trip Tests
+    // =========================================================================
+
+    #[test]
+    fn status_deserialization_success() {
+        let json = r#""success""#;
+        let status: Status = serde_json::from_str(json).unwrap();
+        assert!(matches!(status, Status::Success));
+    }
+
+    #[test]
+    fn status_deserialization_error() {
+        let json = r#""error""#;
+        let status: Status = serde_json::from_str(json).unwrap();
+        assert!(matches!(status, Status::Error));
+    }
+
+    #[test]
+    fn application_info_roundtrip() {
+        let json = r#"{
+            "status": "success",
+            "data": {
+                "version": "4.0.0",
+                "prereleaseVersion": "beta-1",
+                "buildVersion": "20240801",
+                "execPath": "/Applications/Eagle.app",
+                "platform": "darwin"
+            }
+        }"#;
+        let result: GetApplicationInfoResult = serde_json::from_str(json).unwrap();
+        assert!(matches!(result.status, Status::Success));
+        assert_eq!(result.data.version, "4.0.0");
+        assert_eq!(result.data.build_version, "20240801");
+        assert_eq!(result.data.platform, "darwin");
+        assert_eq!(
+            result.data.exec_path,
+            Some("/Applications/Eagle.app".to_string())
+        );
+    }
+
+    #[test]
+    fn folder_list_roundtrip() {
+        let json = r#"{
+            "status": "success",
+            "data": [
+                {
+                    "id": "FOLDER001",
+                    "name": "Design",
+                    "images": [],
+                    "folders": [],
+                    "modificationTime": 1699999999,
+                    "editable": true,
+                    "tags": ["work", "design"],
+                    "children": [],
+                    "isExpand": true,
+                    "size": 1024,
+                    "vstype": "folder",
+                    "isVisible": true,
+                    "imageCount": 42,
+                    "descendantImageCount": 100,
+                    "pinyin": "sheji"
+                }
+            ]
+        }"#;
+        let result: GetFolderListResult = serde_json::from_str(json).unwrap();
+        assert!(matches!(result.status, Status::Success));
+        assert_eq!(result.data.len(), 1);
+        assert_eq!(result.data[0].name, "Design");
+        assert_eq!(result.data[0].modification_time, 1699999999);
+    }
+
+    #[test]
+    fn folder_list_with_nested_children() {
+        let json = r#"{
+            "status": "success",
+            "data": [
+                {
+                    "id": "PARENT01",
+                    "name": "Parent",
+                    "modificationTime": 1699999999,
+                    "editable": true,
+                    "tags": [],
+                    "children": [
+                        {
+                            "id": "CHILD001",
+                            "name": "Child",
+                            "modificationTime": 1699999888,
+                            "editable": false,
+                            "tags": ["nested"],
+                            "children": []
+                        }
+                    ]
+                }
+            ]
+        }"#;
+        let result: GetFolderListResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.data[0].children.len(), 1);
+        assert_eq!(result.data[0].children[0].name, "Child");
+    }
+
+    #[test]
+    fn item_list_roundtrip() {
+        let json = r#"{
+            "status": "success",
+            "data": [
+                {
+                    "id": "ITEM001",
+                    "name": "screenshot",
+                    "size": 2048000,
+                    "ext": "png",
+                    "tags": ["screenshot", "work"],
+                    "folders": ["FOLDER001"],
+                    "isDeleted": false,
+                    "url": "https://example.com/image.png",
+                    "annotation": "Important screenshot",
+                    "modificationTime": 1699999999,
+                    "height": 1080,
+                    "width": 1920,
+                    "lastModified": 1699999000,
+                    "palettes": [
+                        {
+                            "color": [255, 0, 0],
+                            "ratio": 0.45,
+                            "$$hashKey": "palette1"
+                        }
+                    ]
+                }
+            ]
+        }"#;
+        let result: GetItemListResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.data.len(), 1);
+        assert_eq!(result.data[0].name, "screenshot");
+        assert_eq!(result.data[0].width, Some(1920));
+        assert_eq!(result.data[0].palettes.as_ref().unwrap()[0].ratio, 0.45);
+    }
+
+    #[test]
+    fn library_info_roundtrip() {
+        let json = r#"{
+            "status": "success",
+            "data": {
+                "folders": [],
+                "smartFolders": [],
+                "quickAccess": [],
+                "tagsGroups": [],
+                "modificationTime": 1699999999,
+                "applicationVersion": "4.0.0",
+                "library": {
+                    "path": "/Users/test/Library/Eagle",
+                    "name": "My Library"
+                }
+            }
+        }"#;
+        let result: GetLibraryInfoResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.data.library.name, "My Library");
+        assert_eq!(result.data.library.path, "/Users/test/Library/Eagle");
+        assert_eq!(result.data.application_version, "4.0.0");
+    }
+
+    #[test]
+    fn library_history_roundtrip() {
+        let json = r#"{
+            "status": "success",
+            "data": [
+                "/Users/test/Library/Eagle",
+                "/Users/test/Documents/EagleBackup"
+            ]
+        }"#;
+        let result: GetLibraryHistoryResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.data.len(), 2);
+        assert_eq!(result.data[0], "/Users/test/Library/Eagle");
+    }
+
+    #[test]
+    fn item_info_roundtrip() {
+        let json = r#"{
+            "status": "success",
+            "data": {
+                "id": "ITEM123",
+                "name": "logo-design",
+                "size": 1024000,
+                "ext": "png",
+                "tags": ["branding", "logo"],
+                "folders": ["FOLDER001", "FOLDER002"],
+                "isDeleted": false,
+                "url": "",
+                "annotation": "Company logo",
+                "modificationTime": 1699999999,
+                "width": 512,
+                "height": 512,
+                "noThumbnail": false,
+                "lastModified": 1699999000,
+                "palettes": []
+            }
+        }"#;
+        let result: GetItemInfoResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.data.id, "ITEM123");
+        assert_eq!(result.data.width, 512);
+        assert!(!result.data.is_deleted);
+    }
+
+    #[test]
+    fn color_serde_roundtrip() {
+        // Test that Color enum deserializes from strings
+        let red: Color = serde_json::from_str(r#""Red""#).unwrap();
+        assert_eq!(red, Color::Red);
+
+        let blue: Color = serde_json::from_str(r#""Blue""#).unwrap();
+        assert_eq!(blue, Color::Blue);
+    }
+
+    #[test]
+    fn create_folder_result_roundtrip() {
+        let json = r#"{
+            "status": "success",
+            "data": {
+                "id": "NEWFOLDER01",
+                "name": "New Folder",
+                "images": [],
+                "folders": [],
+                "modificationTime": 1699999999,
+                "imageMappings": null,
+                "tags": [],
+                "children": [],
+                "isExpand": true
+            }
+        }"#;
+        let result: CreateFolderResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.data.name, "New Folder");
+        assert_eq!(result.data.id, "NEWFOLDER01");
+    }
+
+    #[test]
+    fn switch_library_result_roundtrip() {
+        let json = r#"{"status": "success"}"#;
+        let result: SwitchLibraryResult = serde_json::from_str(json).unwrap();
+        assert!(matches!(result.status, Status::Success));
+    }
 }

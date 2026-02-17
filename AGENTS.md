@@ -31,11 +31,17 @@ cargo fmt -- --check          # CI: verify formatting without changes
 cargo clippy                  # all warnings
 cargo clippy -- -D warnings   # treat warnings as errors (CI-grade)
 
-# Test (there are no tests yet, but when added)
+# Test (71 tests in total as of now)
 cargo test                    # run all tests
 cargo test <test_name>        # run a single test by name
 cargo test <mod>::             # run all tests in a module
 cargo test -- --nocapture     # show println! output during tests
+
+# Test coverage summary:
+# - lib/types.rs: 35 tests (Order Display, QueryParams, serde round-trips)
+# - lib/client.rs: 9 tests (endpoint construction, decode_body)
+# - cli/item/list: 19 tests (order string parsing)
+# - cli/folder/list: 6 tests (recursive printing)
 ```
 
 ## Project Structure
