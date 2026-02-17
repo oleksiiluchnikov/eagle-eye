@@ -117,7 +117,9 @@ pub async fn execute(
                 .await?;
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
-        _ => {}
+        _ => {
+            println!("No subcommand was used. Try: eagle-eye folder --help");
+        }
     }
 
     Ok(())

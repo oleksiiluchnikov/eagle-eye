@@ -34,17 +34,19 @@ pub async fn execute(
             let result = client.library().switch(Path::new(path)).await?;
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
-        Some(("library", library_matches)) => {
+        Some(("current", current_matches)) => {
             let data = client.library().info().await?.data;
-            if library_matches.get_flag("path") {
+            if current_matches.get_flag("path") {
                 println!("{}", data.library.path);
-            } else if library_matches.get_flag("name") {
+            } else if current_matches.get_flag("name") {
                 println!("{}", data.library.name);
             } else {
                 println!("{}", serde_json::to_string_pretty(&data.library)?);
             }
         }
-        _ => {}
+        _ => {
+            println!("No subcommand was used. Try: info, history, switch, current");
+        }
     }
     Ok(())
 }
@@ -60,39 +62,35 @@ pub fn build() -> Command {
                         .short('f')
                         .long("folders")
                         .help("Show folders")
-                        .num_args(0),
+                        .action(clap::ArgAction::SetTrue),
                 )
                 .arg(
                     Arg::new("smart_folders")
                         .short('s')
                         .long("smart-folders")
                         .help("Show smart folders")
-                        .action(clap::ArgAction::SetTrue)
-                        .num_args(0),
+                        .action(clap::ArgAction::SetTrue),
                 )
                 .arg(
                     Arg::new("quick_access")
                         .short('q')
                         .long("quick-access")
                         .help("Show quick access")
-                        .action(clap::ArgAction::SetTrue)
-                        .num_args(0),
+                        .action(clap::ArgAction::SetTrue),
                 )
                 .arg(
                     Arg::new("tags_groups")
                         .short('t')
                         .long("tags-groups")
                         .help("Show tags groups")
-                        .action(clap::ArgAction::SetTrue)
-                        .num_args(0),
+                        .action(clap::ArgAction::SetTrue),
                 )
                 .arg(
                     Arg::new("modification_time")
                         .short('m')
                         .long("modification-time")
                         .help("Show modification time")
-                        .action(clap::ArgAction::SetTrue)
-                        .num_args(0),
+                        .action(clap::ArgAction::SetTrue),
                 ),
         )
         .subcommand(Command::new("history").about("Library history"))
@@ -107,23 +105,21 @@ pub fn build() -> Command {
             ),
         )
         .subcommand(
-            Command::new("library")
-                .about("Library")
+            Command::new("current")
+                .about("Current working library")
                 .arg(
                     Arg::new("path")
                         .short('p')
                         .long("path")
                         .help("Current working library path")
-                        .required(false)
-                        .num_args(0),
+                        .action(clap::ArgAction::SetTrue),
                 )
                 .arg(
                     Arg::new("name")
                         .short('n')
                         .long("name")
                         .help("Current working library name")
-                        .required(false)
-                        .num_args(0),
+                        .action(clap::ArgAction::SetTrue),
                 ),
         )
 }

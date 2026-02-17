@@ -141,8 +141,11 @@ pub async fn execute(
     let library_path = Path::new(&library_data.library.path).join("images");
 
     let thumbnails_flag = matches.get_flag("thumbnails");
-    let url_flag = !matches.get_one::<String>("url").unwrap().is_empty();
-    let url_keyword = matches.get_one::<String>("url").unwrap();
+    let url_keyword = matches
+        .get_one::<String>("url")
+        .map(|s| s.as_str())
+        .unwrap_or("");
+    let url_flag = !url_keyword.is_empty();
 
     let items: Vec<ItemListData> = client.item().list(query_params).await?.data;
 
@@ -156,7 +159,6 @@ pub async fn execute(
             }
         })
         .map(|item| {
-            // let item_dir_name = &item.id + ".info";
             let item_id = String::from(&item.id);
             let item_dir_name = item_id + ".info";
             let basename = &item.name;

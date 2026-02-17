@@ -8,14 +8,8 @@ pub mod args;
 #[derive(Default)]
 pub struct ListOptions {
     pub(crate) recursive: bool,
-    _tree: bool,
-    _nesting_level: u8,
-}
-
-impl ListOptions {
-    pub fn new() -> Self {
-        Self::default()
-    }
+    /// Maximum depth to recurse into. `None` means unlimited.
+    pub(crate) max_depth: Option<usize>,
 }
 
 pub fn build() -> Command {
@@ -35,12 +29,13 @@ pub fn build() -> Command {
                 .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("nesting_level")
+            Arg::new("max_depth")
                 .short('n')
-                .long("nesting-level")
-                .help("Specify nesting level")
-                .required(false)
-                .default_value("0"),
+                .long("max-depth")
+                .value_name("DEPTH")
+                .help("Limit tree depth (0 = immediate children only)")
+                .num_args(1)
+                .value_parser(clap::value_parser!(usize)),
         )
         .arg(
             Arg::new("recursive")
@@ -57,12 +52,14 @@ pub async fn execute(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let data: Vec<Child> = client.folder().list().await?.data;
 
+    let max_depth = matches.get_one::<usize>("max_depth").copied();
+
     if matches.get_flag("tree") {
         args::tree::execute(
             &data,
             &ListOptions {
                 recursive: matches.get_flag("recursive"),
-                ..Default::default()
+                max_depth,
             },
         )?;
         return Ok(());
@@ -72,22 +69,9 @@ pub async fn execute(
         print_recursive(&data, 0);
         return Ok(());
     }
-    match matches.subcommand() {
-        Some(("tree", matches)) => {
-            args::tree::execute(
-                &data,
-                &ListOptions {
-                    recursive: matches.get_flag("recursive"),
-                    ..Default::default()
-                },
-            )?;
-        }
 
-        _ => {
-            for child in data {
-                println!("{}", child.name);
-            }
-        }
+    for child in data {
+        println!("{}", child.name);
     }
 
     Ok(())

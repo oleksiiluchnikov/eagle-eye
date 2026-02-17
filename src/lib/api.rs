@@ -435,3 +435,49 @@ impl<'a> LibraryRequest<'a> {
             .await
     }
 }
+
+// Tag
+
+pub struct TagRequest<'a> {
+    client: &'a EagleClient,
+}
+
+impl<'a> TagRequest<'a> {
+    const RESOURCE: &'static str = "tag";
+
+    pub fn new(client: &'a EagleClient) -> Self {
+        TagRequest { client }
+    }
+
+    /// List all tags in the library.
+    pub async fn list(&self) -> Result<GetTagListResult, Box<dyn Error>> {
+        let uri = self.client.endpoint(Self::RESOURCE, "list", None)?;
+        self.client
+            .execute_request(uri, Method::GET, Body::empty())
+            .await
+    }
+
+    /// Get all tag data including tags, recent, groups, and starred.
+    pub async fn all(&self) -> Result<GetTagAllResult, Box<dyn Error>> {
+        let uri = self.client.endpoint(Self::RESOURCE, "all", None)?;
+        self.client
+            .execute_request(uri, Method::GET, Body::empty())
+            .await
+    }
+
+    /// List recently used tags.
+    pub async fn list_recent(&self) -> Result<GetTagListRecentResult, Box<dyn Error>> {
+        let uri = self.client.endpoint(Self::RESOURCE, "listRecent", None)?;
+        self.client
+            .execute_request(uri, Method::GET, Body::empty())
+            .await
+    }
+
+    /// List tag groups.
+    pub async fn groups(&self) -> Result<GetTagGroupsResult, Box<dyn Error>> {
+        let uri = self.client.endpoint(Self::RESOURCE, "groups", None)?;
+        self.client
+            .execute_request(uri, Method::GET, Body::empty())
+            .await
+    }
+}
