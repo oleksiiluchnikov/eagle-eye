@@ -6,6 +6,7 @@ use clap::{Arg, ArgMatches, Command};
 pub fn build() -> Command {
     Command::new("folder")
         .about("Folder")
+        .subcommand(Command::new("list-recent").about("List recently used folders"))
         .subcommand(
             Command::new("create")
                 .about("Create folder")
@@ -80,6 +81,10 @@ pub async fn execute(
     match matches.subcommand() {
         Some(("list", matches)) => {
             list::execute(client, matches).await?;
+        }
+        Some(("list-recent", _)) => {
+            let result = client.folder().list_recent().await?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
         Some(("create", matches)) => {
             let folder_name = matches
