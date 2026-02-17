@@ -1,6 +1,6 @@
 mod lib {
-    pub mod client;
     pub mod api;
+    pub mod client;
     pub mod types;
 }
 pub mod cli;

@@ -16,7 +16,7 @@ impl QueryParams for HashMap<&str, &str> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Status {
     #[serde(rename = "success")]
     Success,
@@ -24,7 +24,7 @@ pub enum Status {
     Error,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Color {
     Red,
     Orange,
@@ -36,13 +36,13 @@ pub enum Color {
     Pink,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetApplicationInfoResult {
     pub status: Status,
     pub data: ApplicationData,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ApplicationData {
     pub version: String,
     pub prerelease_version: Option<String>,
@@ -53,7 +53,7 @@ pub struct ApplicationData {
     pub platform: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Child {
     pub id: String,
     pub name: String,
@@ -86,7 +86,7 @@ pub struct Child {
     pub parent: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Styles {
     pub depth: u64,
     pub first: bool,
@@ -94,13 +94,13 @@ pub struct Styles {
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateFolderResult {
     pub status: Status,
     pub data: CreateFolderData,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateFolderData {
     pub id: String,
     pub name: String,
@@ -117,13 +117,13 @@ pub struct CreateFolderData {
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RenameFolderResult {
     pub status: Status,
     pub data: RenameFolderData,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RenameFolderData {
     pub id: String,
     pub name: String,
@@ -151,13 +151,13 @@ pub struct RenameFolderData {
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateFolderResult {
     pub status: Status,
     pub data: UpdateFolderData,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateFolderData {
     pub id: String,
     pub name: String,
@@ -188,14 +188,14 @@ pub struct UpdateFolderData {
 //
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetFolderListResult {
     pub status: Status,
     pub data: Vec<Child>,
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FolderListData {
     pub id: String,
     pub name: String,
@@ -213,13 +213,13 @@ pub struct FolderListData {
     pub extend_tags: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetRecentFolderListResult {
     pub status: Status,
     pub data: Vec<RecentFolderListData>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RecentFolderListData {
     pub id: String,
     pub name: String,
@@ -248,12 +248,12 @@ pub struct RecentFolderListData {
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddItemFromUrlResult {
     pub status: Status,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Item {
     pub url: String,
     pub name: Option<String>,
@@ -270,22 +270,22 @@ pub type OutgoingHttpHeaders = HashMap<String, String>;
 
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddItemFromUrlsResult {
     pub status: Status,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddItemFromPathResult {
     pub status: Status,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddItemFromPathsResult {
     pub status: Status,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddBookmarkResult {
     pub status: Status,
 }
@@ -312,13 +312,13 @@ impl QueryParams for GetItemInfoParams {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetItemInfoResult {
     pub status: Status,
     pub data: ItemInfoData,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ItemInfoData {
     pub id: String,
     pub name: String,
@@ -341,7 +341,7 @@ pub struct ItemInfoData {
     pub palettes: Vec<Palettes>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Palettes {
     pub color: Vec<u64>,
     // pub ratio: u64, // or f64
@@ -350,7 +350,7 @@ pub struct Palettes {
     pub hash_key_: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetItemThumbnailParams {
     pub id: String,
 }
@@ -372,7 +372,7 @@ impl QueryParams for GetItemThumbnailParams {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetItemThumbnailResult {
     pub status: Status,
     pub data: String,
@@ -474,13 +474,13 @@ impl QueryParams for GetItemListParams {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetItemListResult {
     pub status: Status,
     pub data: Vec<ItemListData>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ItemListData {
     pub id: String,
     pub name: String,
@@ -501,36 +501,36 @@ pub struct ItemListData {
     pub palettes: Option<Vec<Palettes>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MoveItemToTrashResult {
     pub status: Status,
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RefreshItemPaletteResult {
     pub status: Status,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RefreshThumbnailResult {
     pub status: Status,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateItemResult {
     pub status: Status,
     pub data: ItemInfoData,
 }
 
 /// Get Library Info
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetLibraryInfoResult {
     pub status: Status,
     pub data: LibraryInfoData,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LibraryInfoData {
     pub folders: Vec<Folder>,
     #[serde(rename = "smartFolders")]
@@ -546,13 +546,13 @@ pub struct LibraryInfoData {
     pub library: LibraryData,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LibraryData {
     pub path: String,
     pub name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
         // folders: {
         //     id: string;
         //     name: string;
@@ -602,7 +602,7 @@ pub struct Folder {
     pub sort_increase: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SmartFolders {
     pub id: String,
     pub icon: Option<String>,
@@ -613,28 +613,28 @@ pub struct SmartFolders {
     pub conditions: Vec<Conditions>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Conditions {
     #[serde(rename = "match")]
     pub match_: String,
     pub rules: Vec<Rules>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Rules {
     pub method: String,
     pub property: String,
     pub value: Value,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct QuickAccess {
     #[serde(rename = "type")]
     pub type_: String,
     pub id: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TagsGroups {
     pub id: String,
     pub name: String,
@@ -642,13 +642,13 @@ pub struct TagsGroups {
     pub color: Color,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetLibraryHistoryResult {
     pub status: Status,
     pub data: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SwitchLibraryResult {
     pub status: Status,
 }
@@ -659,7 +659,7 @@ pub struct SwitchLibraryResult {
 //     url: String,
 // }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LibraryHistoryData {
     pub path: String,
     pub name: String,
