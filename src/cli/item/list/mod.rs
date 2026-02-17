@@ -39,7 +39,8 @@ pub fn build() -> Command {
                 .long("order-by")
                 .value_name("ORDER-BY")
                 .help("The sorting order")
-                .num_args(1),
+                .num_args(1)
+                .allow_hyphen_values(true),
         )
         .arg(
             Arg::new("keyword")
@@ -174,8 +175,14 @@ pub async fn execute(
         })
         .collect();
 
-    for path in &paths {
-        println!("{}", path.display());
+    let length_flag = matches.get_flag("length");
+
+    if length_flag {
+        println!("{}", paths.len());
+    } else {
+        for path in &paths {
+            println!("{}", path.display());
+        }
     }
 
     Ok(())
