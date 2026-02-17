@@ -1,7 +1,7 @@
 pub mod list;
 pub mod rename;
 use crate::lib::client::EagleClient;
-use clap::{Arg, ArgAction, ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command};
 
 pub fn build() -> Command {
     Command::new("folder")
@@ -82,13 +82,35 @@ pub async fn execute(
             list::execute(client, matches).await?;
         }
         Some(("create", matches)) => {
-            todo!();
+            let folder_name = matches
+                .get_one::<String>("folder_name")
+                .expect("folder_name is required");
+            let parent = matches.get_one::<String>("parent_folder_id");
+            let parent = parent.and_then(|p| if p.is_empty() { None } else { Some(p.as_str()) });
+            let result = client.folder().create(folder_name, parent).await?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
         Some(("rename", matches)) => {
-            todo!();
+            rename::execute(client, matches).await?;
         }
         Some(("update", matches)) => {
-            todo!();
+            let folder_id = matches
+                .get_one::<String>("folder_id")
+                .expect("folder_id is required");
+            let new_name = matches.get_one::<String>("new_name");
+            let new_name =
+                new_name.and_then(|n| if n.is_empty() { None } else { Some(n.as_str()) });
+            let new_description = matches.get_one::<String>("new_description");
+            let new_description =
+                new_description.and_then(|d| if d.is_empty() { None } else { Some(d.as_str()) });
+            let new_color = matches.get_one::<String>("new_color");
+            let new_color =
+                new_color.and_then(|c| if c.is_empty() { None } else { Some(c.as_str()) });
+            let result = client
+                .folder()
+                .update(folder_id, new_name, new_description, new_color)
+                .await?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
         _ => {}
     }

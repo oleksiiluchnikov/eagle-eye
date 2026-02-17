@@ -1,8 +1,8 @@
-use serde_json::Value;
+use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
-use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 
 pub trait QueryParams {
     fn to_query_string(&self) -> String;
@@ -25,6 +25,7 @@ pub enum Status {
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub enum Color {
     Red,
     Orange,
@@ -93,7 +94,6 @@ pub struct Styles {
     pub last: bool,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateFolderResult {
     pub status: Status,
@@ -115,7 +115,6 @@ pub struct CreateFolderData {
     #[serde(rename = "isExpand")]
     pub is_expand: bool,
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RenameFolderResult {
@@ -150,7 +149,6 @@ pub struct RenameFolderData {
     pub pinyin: String,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateFolderResult {
     pub status: Status,
@@ -184,18 +182,14 @@ pub struct UpdateFolderData {
     pub pinyin: String,
 }
 
-// TODO: Implement this DeleteFolderResult
-//
-
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetFolderListResult {
     pub status: Status,
     pub data: Vec<Child>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct FolderListData {
     pub id: String,
     pub name: String,
@@ -214,12 +208,14 @@ pub struct FolderListData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct GetRecentFolderListResult {
     pub status: Status,
     pub data: Vec<RecentFolderListData>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct RecentFolderListData {
     pub id: String,
     pub name: String,
@@ -247,13 +243,14 @@ pub struct RecentFolderListData {
     pub extend_tags: Vec<String>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AddItemFromUrlResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Item {
     pub url: String,
     pub name: Option<String>,
@@ -266,26 +263,29 @@ pub struct Item {
     pub headers: Option<OutgoingHttpHeaders>,
 }
 
+#[allow(dead_code)]
 pub type OutgoingHttpHeaders = HashMap<String, String>;
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AddItemFromUrlsResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AddItemFromPathResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AddItemFromPathsResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AddBookmarkResult {
     pub status: Status,
 }
@@ -297,14 +297,16 @@ pub struct GetItemInfoParams {
 
 impl QueryParams for GetItemInfoParams {
     fn to_query_string(&self) -> String {
-        let fields: [(&str, &String); 1] = [
-            ("id", &self.id),
-        ];
+        let fields: [(&str, &String); 1] = [("id", &self.id)];
 
         let query_params: Vec<String> = fields
             .iter()
-            .filter_map(|&(param_name, param)| {
-                Some(format!("{}={}", param_name, percent_encode(param.as_bytes(), NON_ALPHANUMERIC).to_string()))
+            .map(|&(param_name, param)| {
+                format!(
+                    "{}={}",
+                    param_name,
+                    percent_encode(param.as_bytes(), NON_ALPHANUMERIC)
+                )
             })
             .collect();
 
@@ -357,14 +359,16 @@ pub struct GetItemThumbnailParams {
 
 impl QueryParams for GetItemThumbnailParams {
     fn to_query_string(&self) -> String {
-        let fields: [(&str, &String); 1] = [
-            ("id", &self.id),
-        ];
+        let fields: [(&str, &String); 1] = [("id", &self.id)];
 
         let query_params: Vec<String> = fields
             .iter()
-            .filter_map(|&(param_name, param)| {
-                Some(format!("{}={}", param_name, percent_encode(param.as_bytes(), NON_ALPHANUMERIC).to_string()))
+            .map(|&(param_name, param)| {
+                format!(
+                    "{}={}",
+                    param_name,
+                    percent_encode(param.as_bytes(), NON_ALPHANUMERIC)
+                )
             })
             .collect();
 
@@ -380,8 +384,8 @@ pub struct GetItemThumbnailResult {
 
 pub type ItemThumbnailData = String;
 
-
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum Order {
     MANUAL,
     CREATEDATE,
@@ -414,8 +418,6 @@ impl fmt::Display for Order {
         write!(f, "{}", value)
     }
 }
-
-
 
 /// Represents the parameters for the `/api/item/list` request.
 #[derive(Debug, Serialize)]
@@ -454,19 +456,36 @@ impl QueryParams for GetItemListParams {
     fn to_query_string(&self) -> String {
         let fields: [(&str, Option<String>); 7] = [
             ("limit", self.limit.as_ref().map(|value| value.to_string())),
-            ("offset", self.offset.as_ref().map(|value| value.to_string())),
-            ("order_by", self.order_by.as_ref().map(|value| value.to_string())),
-            ("keyword", self.keyword.as_ref().map(|value| value.to_string())),
+            (
+                "offset",
+                self.offset.as_ref().map(|value| value.to_string()),
+            ),
+            (
+                "orderBy",
+                self.order_by.as_ref().map(|value| value.to_string()),
+            ),
+            (
+                "keyword",
+                self.keyword.as_ref().map(|value| value.to_string()),
+            ),
             ("ext", self.ext.as_ref().map(|value| value.to_string())),
             ("tags", self.tags.as_ref().map(|value| value.to_string())),
-            ("folders", self.folders.as_ref().map(|value| value.to_string())),
-            
+            (
+                "folders",
+                self.folders.as_ref().map(|value| value.to_string()),
+            ),
         ];
 
         let query_params: Vec<String> = fields
             .iter()
             .filter_map(|(param_name, param)| {
-                param.as_ref().map(|value| format!("{}={}", param_name, percent_encode(value.as_bytes(), NON_ALPHANUMERIC).to_string()))
+                param.as_ref().map(|value| {
+                    format!(
+                        "{}={}",
+                        param_name,
+                        percent_encode(value.as_bytes(), NON_ALPHANUMERIC)
+                    )
+                })
             })
             .collect();
 
@@ -502,22 +521,25 @@ pub struct ItemListData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct MoveItemToTrashResult {
     pub status: Status,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct RefreshItemPaletteResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct RefreshThumbnailResult {
     pub status: Status,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct UpdateItemResult {
     pub status: Status,
     pub data: ItemInfoData,
@@ -553,34 +575,6 @@ pub struct LibraryData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-        // folders: {
-        //     id: string;
-        //     name: string;
-        //     description: "";
-        //     children: {
-        //         id: string;
-        //         name: string;
-        //         description: string;
-        //         children: unknown[];
-        //         modificationTime: number;
-        //         tags: string[];
-        //         iconColor: string;
-        //         password: string;
-        //         passwordTips: string;
-        //         coverId: string;
-        //         orderBy: Order;
-        //         sortIncrease: boolean;
-        //     }[];
-        //     modificationTime: number;
-        //     tags: string[];
-        //     iconColor: string;
-        //     password: string;
-        //     passwordTips: string;
-        //     coverId: string;
-        //     orderBy: Order;
-        //     sortIncrease: boolean;
-        // }[];
-        //
 pub struct Folder {
     pub id: String,
     pub name: String,
@@ -628,6 +622,7 @@ pub struct Rules {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct QuickAccess {
     #[serde(rename = "type")]
     pub type_: String,
@@ -635,6 +630,7 @@ pub struct QuickAccess {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct TagsGroups {
     pub id: String,
     pub name: String,
@@ -651,16 +647,4 @@ pub struct GetLibraryHistoryResult {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SwitchLibraryResult {
     pub status: Status,
-}
-
-// pub struct EagleClient {
-//     host: String,
-//     port: u16,
-//     url: String,
-// }
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LibraryHistoryData {
-    pub path: String,
-    pub name: String,
 }

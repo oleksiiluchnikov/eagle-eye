@@ -1,13 +1,14 @@
 use crate::lib::client::EagleClient;
-use clap::{Arg,ArgMatches,ArgAction, Command};
 use crate::lib::types::{GetItemThumbnailParams, ItemThumbnailData};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 
 pub fn build() -> Command {
     Command::new("thumbnail").about("Get item thumbnail").arg(
         Arg::new("id")
-            .required(false)
+            .required(true)
             .value_name("ID")
-            .action(ArgAction::Set), //do not require a flag to be passed
+            .help("Id of the file")
+            .action(ArgAction::Set),
     )
 }
 
@@ -15,11 +16,9 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let raw_id: &str = matches.get_one::<String>("id").unwrap().as_str();
-    // let id = GetItemListParams {
-    //     id=raw_id
-    // }
-    let query_params: GetItemThumbnailParams = GetItemThumbnailParams {
+    let raw_id = matches.get_one::<String>("id").expect("id is required");
+
+    let query_params = GetItemThumbnailParams {
         id: raw_id.to_string(),
     };
     let thumbnail_path: ItemThumbnailData = client.item().thumbnail(query_params).await?.data;
