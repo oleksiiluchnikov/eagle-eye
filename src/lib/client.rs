@@ -1,4 +1,4 @@
-use super::api::{ApplicationRequest, FolderRequest, ItemRequest, LibraryRequest};
+use super::api::{ApplicationRequest, FolderRequest, ItemRequest, LibraryRequest, TagRequest};
 use hyper::client::HttpConnector;
 use hyper::http::uri::Authority;
 use hyper::StatusCode;
@@ -74,6 +74,11 @@ impl EagleClient {
     /// Get a request builder for the library resource
     pub fn library(&self) -> LibraryRequest<'_> {
         LibraryRequest::new(self)
+    }
+
+    /// Get a request builder for the tag resource
+    pub fn tag(&self) -> TagRequest<'_> {
+        TagRequest::new(self)
     }
 }
 

@@ -24,19 +24,6 @@ pub enum Status {
     Error,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub enum Color {
-    Red,
-    Orange,
-    Green,
-    Yellow,
-    Aqua,
-    Blue,
-    Purple,
-    Pink,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetApplicationInfoResult {
     pub status: Status,
@@ -63,7 +50,6 @@ pub struct Child {
     #[serde(rename = "modificationTime")]
     pub modification_time: u64,
     pub editable: Option<bool>,
-    // pub imagesMappings: Option<Vec<Value>>,
     pub tags: Vec<String>,
     pub children: Vec<Child>,
     #[serde(rename = "isExpand")]
@@ -186,25 +172,6 @@ pub struct UpdateFolderData {
 pub struct GetFolderListResult {
     pub status: Status,
     pub data: Vec<Child>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct FolderListData {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub children: Option<Vec<Child>>,
-    #[serde(rename = "modificationTime")]
-    pub modification_time: u64,
-    pub tags: Vec<String>,
-    #[serde(rename = "imageCount")]
-    pub image_count: u64,
-    #[serde(rename = "descendantImageCount")]
-    pub descendant_image_count: Option<u64>,
-    pub pinyin: String,
-    #[serde(rename = "extendTags")]
-    pub extend_tags: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -349,7 +316,6 @@ pub struct ItemInfoData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Palettes {
     pub color: Vec<u64>,
-    // pub ratio: u64, // or f64
     pub ratio: f64,
     #[serde(rename = "$$hashKey")]
     pub hash_key_: Option<String>,
@@ -516,12 +482,6 @@ pub struct ItemListData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct MoveItemToTrashResult {
-    pub status: Status,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct RefreshItemPaletteResult {
     pub status: Status,
 }
@@ -613,21 +573,53 @@ pub struct Rules {
     pub value: Value,
 }
 
+// Tag types
+
+/// Result for `GET /api/tag/list`.
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct QuickAccess {
-    #[serde(rename = "type")]
-    pub type_: String,
-    pub id: String,
+pub struct GetTagListResult {
+    pub status: Status,
+    pub data: Vec<TagData>,
 }
 
+/// A single tag entry returned by `tag/list` and `tag/listRecent`.
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct TagsGroups {
-    pub id: String,
+pub struct TagData {
     pub name: String,
-    pub tags: Vec<String>,
-    pub color: Color,
+    #[serde(rename = "imageCount")]
+    pub image_count: u64,
+    pub groups: Vec<Value>,
+    pub pinyin: String,
+}
+
+/// Result for `GET /api/tag/all`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetTagAllResult {
+    pub status: Status,
+    pub data: TagAllData,
+}
+
+/// Data shape for `tag/all`: contains tags, recent, groups, starred arrays.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagAllData {
+    pub tags: Vec<TagData>,
+    pub recent: Vec<TagData>,
+    pub groups: Vec<Value>,
+    pub starred: Vec<Value>,
+}
+
+/// Result for `GET /api/tag/listRecent`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetTagListRecentResult {
+    pub status: Status,
+    pub data: Vec<TagData>,
+}
+
+/// Result for `GET /api/tag/groups`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetTagGroupsResult {
+    pub status: Status,
+    pub data: Vec<Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1065,16 +1057,6 @@ mod tests {
         assert_eq!(result.data.id, "ITEM123");
         assert_eq!(result.data.width, 512);
         assert!(!result.data.is_deleted);
-    }
-
-    #[test]
-    fn color_serde_roundtrip() {
-        // Test that Color enum deserializes from strings
-        let red: Color = serde_json::from_str(r#""Red""#).unwrap();
-        assert_eq!(red, Color::Red);
-
-        let blue: Color = serde_json::from_str(r#""Blue""#).unwrap();
-        assert_eq!(blue, Color::Blue);
     }
 
     #[test]
