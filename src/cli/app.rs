@@ -1,14 +1,5 @@
 use crate::lib::client::EagleClient;
-use clap::ArgMatches;
-use clap::{Arg, Command};
-
-pub struct App;
-
-impl App {
-    pub fn new() -> Self {
-        App {}
-    }
-}
+use clap::{Arg, ArgMatches, Command};
 
 pub fn build() -> Command {
     Command::new("app")
@@ -18,16 +9,14 @@ pub fn build() -> Command {
                 .short('i')
                 .long("info")
                 .help("Show application info")
-                .action(clap::ArgAction::SetTrue)
-                .default_value("true"),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
             Arg::new("version")
                 .short('v')
                 .long("version")
                 .help("Show application version")
-                .required(false)
-                .num_args(0),
+                .action(clap::ArgAction::SetTrue),
         )
 }
 
@@ -39,6 +28,11 @@ pub async fn execute(
 
     if matches.get_flag("version") {
         println!("{}", data.version);
+    } else if matches.get_flag("info") {
+        println!("{}", serde_json::to_string_pretty(&data)?);
+    } else {
+        // Default: show info when no flag specified
+        println!("{}", serde_json::to_string_pretty(&data)?);
     }
     Ok(())
 }

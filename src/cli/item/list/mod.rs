@@ -1,6 +1,6 @@
 use crate::lib::client::EagleClient;
 use crate::lib::types::{GetItemListParams, ItemListData, Order};
-use clap::{Arg, ArgAction, ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command};
 use rayon::prelude::*;
 use std::path::Path;
 
@@ -109,7 +109,24 @@ pub async fn execute(
     }
 
     if let Some(order_by) = matches.get_one::<String>("order_by") {
-        todo!()
+        let order = match order_by.to_uppercase().as_str() {
+            "MANUAL" => Order::MANUAL,
+            "CREATEDATE" => Order::CREATEDATE,
+            "-CREATEDATE" | "CREATEDATEDESC" => Order::CREATEDATEDESC,
+            "BTIME" => Order::BTIME,
+            "MTIME" => Order::MTIME,
+            "FILESIZE" => Order::FILESIZE,
+            "-FILESIZE" | "FILESIZEREVERSE" => Order::FILESIZEREVERSE,
+            "NAME" => Order::NAME,
+            "-NAME" | "NAMEREVERSE" => Order::NAMEREVERSE,
+            "RESOLUTION" => Order::RESOLUTION,
+            "-RESOLUTION" | "RESOLUTIONREVERSE" => Order::RESOLUTIONREVERSE,
+            other => {
+                eprintln!("Unknown order: '{}'. Valid values: MANUAL, CREATEDATE, -CREATEDATE, BTIME, MTIME, FILESIZE, -FILESIZE, NAME, -NAME, RESOLUTION, -RESOLUTION", other);
+                return Ok(());
+            }
+        };
+        query_params.order_by = Some(order);
     }
 
     if let Some(keyword) = matches.get_one::<String>("keyword") {
@@ -132,7 +149,7 @@ pub async fn execute(
     let library_path = Path::new(&library_data.library.path).join("images");
 
     let thumbnails_flag = matches.get_flag("thumbnails");
-    let url_flag = matches.get_one::<String>("url").unwrap().len() > 0;
+    let url_flag = !matches.get_one::<String>("url").unwrap().is_empty();
     let url_keyword = matches.get_one::<String>("url").unwrap();
 
     let items: Vec<ItemListData> = client.item().list(query_params).await?.data;
@@ -140,7 +157,7 @@ pub async fn execute(
     let paths: Vec<_> = items
         .par_iter()
         .filter(|item| {
-            if url_flag && url_keyword.len() > 0 {
+            if url_flag && !url_keyword.is_empty() {
                 item.url.contains(url_keyword)
             } else {
                 true

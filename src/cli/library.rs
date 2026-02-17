@@ -1,50 +1,47 @@
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
-use serde_json;
-
-pub struct App;
-
-impl App {
-    pub fn new() -> Self {
-        App {}
-    }
-}
+use std::path::Path;
 
 pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let data = client.library().info().await?.data;
-
     match matches.subcommand() {
         Some(("info", info_matches)) => {
+            let data = client.library().info().await?.data;
             if info_matches.get_flag("folders") {
-                println!("{}", serde_json::to_string_pretty(&data.folders).unwrap());
+                println!("{}", serde_json::to_string_pretty(&data.folders)?);
             } else if info_matches.get_flag("smart_folders") {
-                println!("{:?}", data.smart_folders);
+                println!("{}", serde_json::to_string_pretty(&data.smart_folders)?);
             } else if info_matches.get_flag("quick_access") {
-                println!("{:?}", data.quick_access);
+                println!("{}", serde_json::to_string_pretty(&data.quick_access)?);
             } else if info_matches.get_flag("tags_groups") {
-                println!("{:?}", data.tags_groups);
+                println!("{}", serde_json::to_string_pretty(&data.tags_groups)?);
             } else if info_matches.get_flag("modification_time") {
-                println!("{:?}", data.modification_time);
+                println!("{}", data.modification_time);
             } else {
-                println!("{:?}", data);
+                println!("{}", serde_json::to_string_pretty(&data)?);
             }
         }
         Some(("history", _)) => {
-            todo!();
+            let result = client.library().history().await?;
+            println!("{}", serde_json::to_string_pretty(&result.data)?);
         }
-        Some(("switch", _)) => {
-            todo!();
+        Some(("switch", switch_matches)) => {
+            let path = switch_matches
+                .get_one::<String>("path")
+                .expect("path is required");
+            let result = client.library().switch(Path::new(path)).await?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
         Some(("library", library_matches)) => {
+            let data = client.library().info().await?.data;
             if library_matches.get_flag("path") {
                 println!("{}", data.library.path);
             } else if library_matches.get_flag("name") {
                 println!("{}", data.library.name);
             } else {
-                println!("{:?}", data.library);
+                println!("{}", serde_json::to_string_pretty(&data.library)?);
             }
         }
         _ => {}
