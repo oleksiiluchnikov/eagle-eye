@@ -94,11 +94,127 @@ pub async fn execute(
 }
 
 fn print_recursive(data: &[Child], nesting_level: u8) {
+    print_recursive_to_writer(data, nesting_level, &mut std::io::stdout());
+}
+
+fn print_recursive_to_writer<W: std::io::Write>(data: &[Child], nesting_level: u8, writer: &mut W) {
     for child in data {
         let indent = "  ".repeat(nesting_level as usize);
-        println!("{}{}", indent, child.name);
+        writeln!(writer, "{}{}", indent, child.name).unwrap();
         if !child.children.is_empty() {
-            print_recursive(&child.children, nesting_level + 1);
+            print_recursive_to_writer(&child.children, nesting_level + 1, writer);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lib::types::Child;
+
+    fn create_test_child(name: &str, children: Vec<Child>) -> Child {
+        Child {
+            id: format!("id-{}", name),
+            name: name.to_string(),
+            images: None,
+            folders: None,
+            modification_time: 0,
+            editable: None,
+            tags: vec![],
+            children,
+            is_expand: None,
+            size: None,
+            vstype: None,
+            styles: None,
+            is_visible: None,
+            index: None,
+            new_folder_name: None,
+            image_count: None,
+            descendant_image_count: None,
+            pinyin: None,
+            extend_tags: None,
+            covers: None,
+            parent: None,
+        }
+    }
+
+    #[test]
+    fn print_recursive_single_folder() {
+        let folders = vec![create_test_child("Root", vec![])];
+        let mut output = Vec::new();
+        print_recursive_to_writer(&folders, 0, &mut output);
+        let result = String::from_utf8(output).unwrap();
+        assert_eq!(result, "Root\n");
+    }
+
+    #[test]
+    fn print_recursive_nested_folders() {
+        let child = create_test_child("Child", vec![]);
+        let parent = create_test_child("Parent", vec![child]);
+        let folders = vec![parent];
+
+        let mut output = Vec::new();
+        print_recursive_to_writer(&folders, 0, &mut output);
+        let result = String::from_utf8(output).unwrap();
+        assert_eq!(result, "Parent\n  Child\n");
+    }
+
+    #[test]
+    fn print_recursive_deeply_nested() {
+        let grandchild = create_test_child("Grandchild", vec![]);
+        let child = create_test_child("Child", vec![grandchild]);
+        let parent = create_test_child("Parent", vec![child]);
+        let folders = vec![parent];
+
+        let mut output = Vec::new();
+        print_recursive_to_writer(&folders, 0, &mut output);
+        let result = String::from_utf8(output).unwrap();
+        assert_eq!(result, "Parent\n  Child\n    Grandchild\n");
+    }
+
+    #[test]
+    fn print_recursive_multiple_siblings() {
+        let folders = vec![
+            create_test_child("Folder A", vec![]),
+            create_test_child("Folder B", vec![]),
+            create_test_child("Folder C", vec![]),
+        ];
+
+        let mut output = Vec::new();
+        print_recursive_to_writer(&folders, 0, &mut output);
+        let result = String::from_utf8(output).unwrap();
+        assert_eq!(result, "Folder A\nFolder B\nFolder C\n");
+    }
+
+    #[test]
+    fn print_recursive_with_initial_indent() {
+        let folders = vec![create_test_child(
+            "Root",
+            vec![create_test_child("Child", vec![])],
+        )];
+
+        let mut output = Vec::new();
+        print_recursive_to_writer(&folders, 2, &mut output);
+        let result = String::from_utf8(output).unwrap();
+        assert_eq!(result, "    Root\n      Child\n");
+    }
+
+    #[test]
+    fn print_recursive_complex_tree() {
+        // Parent
+        // ├── Child 1
+        // │   └── Grandchild
+        // └── Child 2
+        let grandchild = create_test_child("Grandchild", vec![]);
+        let child1 = create_test_child("Child 1", vec![grandchild]);
+        let child2 = create_test_child("Child 2", vec![]);
+        let parent = create_test_child("Parent", vec![child1, child2]);
+
+        let folders = vec![parent];
+
+        let mut output = Vec::new();
+        print_recursive_to_writer(&folders, 0, &mut output);
+        let result = String::from_utf8(output).unwrap();
+        assert_eq!(result, "Parent\n  Child 1\n    Grandchild\n  Child 2\n");
     }
 }

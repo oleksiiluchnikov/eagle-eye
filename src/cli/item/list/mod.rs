@@ -109,24 +109,15 @@ pub async fn execute(
     }
 
     if let Some(order_by) = matches.get_one::<String>("order_by") {
-        let order = match order_by.to_uppercase().as_str() {
-            "MANUAL" => Order::MANUAL,
-            "CREATEDATE" => Order::CREATEDATE,
-            "-CREATEDATE" | "CREATEDATEDESC" => Order::CREATEDATEDESC,
-            "BTIME" => Order::BTIME,
-            "MTIME" => Order::MTIME,
-            "FILESIZE" => Order::FILESIZE,
-            "-FILESIZE" | "FILESIZEREVERSE" => Order::FILESIZEREVERSE,
-            "NAME" => Order::NAME,
-            "-NAME" | "NAMEREVERSE" => Order::NAMEREVERSE,
-            "RESOLUTION" => Order::RESOLUTION,
-            "-RESOLUTION" | "RESOLUTIONREVERSE" => Order::RESOLUTIONREVERSE,
-            other => {
-                eprintln!("Unknown order: '{}'. Valid values: MANUAL, CREATEDATE, -CREATEDATE, BTIME, MTIME, FILESIZE, -FILESIZE, NAME, -NAME, RESOLUTION, -RESOLUTION", other);
+        match parse_order(order_by) {
+            Some(order) => {
+                query_params.order_by = Some(order);
+            }
+            None => {
+                eprintln!("Unknown order: '{}'. Valid values: MANUAL, CREATEDATE, -CREATEDATE, BTIME, MTIME, FILESIZE, -FILESIZE, NAME, -NAME, RESOLUTION, -RESOLUTION", order_by);
                 return Ok(());
             }
-        };
-        query_params.order_by = Some(order);
+        }
     }
 
     if let Some(keyword) = matches.get_one::<String>("keyword") {
@@ -188,4 +179,169 @@ pub async fn execute(
     }
 
     Ok(())
+}
+
+/// Parse an order string into an Order enum variant.
+/// Returns None if the order string is not recognized.
+pub fn parse_order(order_str: &str) -> Option<Order> {
+    match order_str.to_uppercase().as_str() {
+        "MANUAL" => Some(Order::MANUAL),
+        "CREATEDATE" => Some(Order::CREATEDATE),
+        "-CREATEDATE" | "CREATEDATEDESC" => Some(Order::CREATEDATEDESC),
+        "BTIME" => Some(Order::BTIME),
+        "MTIME" => Some(Order::MTIME),
+        "FILESIZE" => Some(Order::FILESIZE),
+        "-FILESIZE" | "FILESIZEREVERSE" => Some(Order::FILESIZEREVERSE),
+        "NAME" => Some(Order::NAME),
+        "-NAME" | "NAMEREVERSE" => Some(Order::NAMEREVERSE),
+        "RESOLUTION" => Some(Order::RESOLUTION),
+        "-RESOLUTION" | "RESOLUTIONREVERSE" => Some(Order::RESOLUTIONREVERSE),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // Order Parsing Tests
+    // =========================================================================
+
+    #[test]
+    fn parse_order_manual() {
+        assert!(matches!(parse_order("MANUAL").unwrap(), Order::MANUAL));
+        assert!(matches!(parse_order("manual").unwrap(), Order::MANUAL));
+    }
+
+    #[test]
+    fn parse_order_createdate() {
+        assert!(matches!(
+            parse_order("CREATEDATE").unwrap(),
+            Order::CREATEDATE
+        ));
+        assert!(matches!(
+            parse_order("createdate").unwrap(),
+            Order::CREATEDATE
+        ));
+    }
+
+    #[test]
+    fn parse_order_createdate_desc() {
+        assert!(matches!(
+            parse_order("-CREATEDATE").unwrap(),
+            Order::CREATEDATEDESC
+        ));
+        assert!(matches!(
+            parse_order("CREATEDATEDESC").unwrap(),
+            Order::CREATEDATEDESC
+        ));
+        assert!(matches!(
+            parse_order("createdatedesc").unwrap(),
+            Order::CREATEDATEDESC
+        ));
+    }
+
+    #[test]
+    fn parse_order_btime() {
+        assert!(matches!(parse_order("BTIME").unwrap(), Order::BTIME));
+        assert!(matches!(parse_order("btime").unwrap(), Order::BTIME));
+    }
+
+    #[test]
+    fn parse_order_mtime() {
+        assert!(matches!(parse_order("MTIME").unwrap(), Order::MTIME));
+        assert!(matches!(parse_order("mtime").unwrap(), Order::MTIME));
+    }
+
+    #[test]
+    fn parse_order_filesize() {
+        assert!(matches!(parse_order("FILESIZE").unwrap(), Order::FILESIZE));
+        assert!(matches!(parse_order("filesize").unwrap(), Order::FILESIZE));
+    }
+
+    #[test]
+    fn parse_order_filesize_reverse() {
+        assert!(matches!(
+            parse_order("-FILESIZE").unwrap(),
+            Order::FILESIZEREVERSE
+        ));
+        assert!(matches!(
+            parse_order("FILESIZEREVERSE").unwrap(),
+            Order::FILESIZEREVERSE
+        ));
+        assert!(matches!(
+            parse_order("filesizereverse").unwrap(),
+            Order::FILESIZEREVERSE
+        ));
+    }
+
+    #[test]
+    fn parse_order_name() {
+        assert!(matches!(parse_order("NAME").unwrap(), Order::NAME));
+        assert!(matches!(parse_order("name").unwrap(), Order::NAME));
+    }
+
+    #[test]
+    fn parse_order_name_reverse() {
+        assert!(matches!(parse_order("-NAME").unwrap(), Order::NAMEREVERSE));
+        assert!(matches!(
+            parse_order("NAMEREVERSE").unwrap(),
+            Order::NAMEREVERSE
+        ));
+        assert!(matches!(
+            parse_order("namereverse").unwrap(),
+            Order::NAMEREVERSE
+        ));
+    }
+
+    #[test]
+    fn parse_order_resolution() {
+        assert!(matches!(
+            parse_order("RESOLUTION").unwrap(),
+            Order::RESOLUTION
+        ));
+        assert!(matches!(
+            parse_order("resolution").unwrap(),
+            Order::RESOLUTION
+        ));
+    }
+
+    #[test]
+    fn parse_order_resolution_reverse() {
+        assert!(matches!(
+            parse_order("-RESOLUTION").unwrap(),
+            Order::RESOLUTIONREVERSE
+        ));
+        assert!(matches!(
+            parse_order("RESOLUTIONREVERSE").unwrap(),
+            Order::RESOLUTIONREVERSE
+        ));
+        assert!(matches!(
+            parse_order("resolutionreverse").unwrap(),
+            Order::RESOLUTIONREVERSE
+        ));
+    }
+
+    #[test]
+    fn parse_order_unknown() {
+        assert!(parse_order("UNKNOWN").is_none());
+        assert!(parse_order("invalid").is_none());
+        assert!(parse_order("").is_none());
+        assert!(parse_order("file").is_none());
+    }
+
+    #[test]
+    fn parse_order_mixed_case() {
+        // Test that mixed case is handled properly
+        assert!(matches!(parse_order("FileSize").unwrap(), Order::FILESIZE));
+        assert!(matches!(
+            parse_order("CreateDate").unwrap(),
+            Order::CREATEDATE
+        ));
+        assert!(matches!(
+            parse_order("-filesize").unwrap(),
+            Order::FILESIZEREVERSE
+        ));
+    }
 }
