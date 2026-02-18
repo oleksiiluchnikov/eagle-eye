@@ -64,6 +64,14 @@ pub fn build() -> Command {
                 .help("Custom HTTP header for downloading (can be repeated)")
                 .action(clap::ArgAction::Append),
         )
+        .arg(
+            Arg::new("if-exists")
+                .long("if-exists")
+                .value_name("ACTION")
+                .help("Behavior when item already exists: skip or error (default: error)")
+                .value_parser(["skip", "error"])
+                .default_value("error"),
+        )
 }
 
 pub async fn execute(
@@ -73,6 +81,10 @@ pub async fn execute(
     let config = resolve_config(matches);
     let url = matches.get_one::<String>("url").expect("url is required");
     let name = matches.get_one::<String>("name").expect("name is required");
+    let if_exists = matches
+        .get_one::<String>("if-exists")
+        .map(|s| s.as_str())
+        .unwrap_or("error");
 
     if config.dry_run {
         eprintln!("dry-run: would add item from URL {}", url);
@@ -107,7 +119,19 @@ pub async fn execute(
         headers,
     };
 
-    let result = client.item().add_from_url(&params).await?;
-    output::output(&result, &config)?;
+    match client.item().add_from_url(&params).await {
+        Ok(result) => {
+            output::output(&result, &config)?;
+        }
+        Err(e) => {
+            if if_exists == "skip" {
+                if !config.quiet {
+                    eprintln!("Skipped (--if-exists skip): {}", e);
+                }
+                return Ok(());
+            }
+            return Err(e);
+        }
+    }
     Ok(())
 }
