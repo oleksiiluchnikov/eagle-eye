@@ -6,6 +6,7 @@ pub mod folder;
 pub mod item;
 pub mod library;
 pub mod output;
+pub mod plugin;
 pub mod tag;
 
 pub const PORT: u16 = 41595;
@@ -56,6 +57,7 @@ pub fn get_matches() -> ArgMatches {
         .subcommand(folder::build())
         .subcommand(item::build())
         .subcommand(library::build())
+        .subcommand(plugin::build())
         .subcommand(tag::build())
         .get_matches()
 }
@@ -71,6 +73,7 @@ pub async fn execute() -> Result<(), Box<dyn std::error::Error>> {
         Some(("library", library_matches)) => {
             library::execute(&eagle_client, library_matches).await
         }
+        Some(("plugin", plugin_matches)) => plugin::execute(plugin_matches).await,
         Some(("tag", tag_matches)) => tag::execute(&eagle_client, tag_matches).await,
         _ => {
             eprintln!("Error: No subcommand was used");

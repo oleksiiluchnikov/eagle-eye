@@ -647,6 +647,35 @@ pub struct SwitchLibraryResult {
     pub status: Status,
 }
 
+// =============================================================================
+// Plugin discovery types (NOT part of Eagle's API — local file protocol)
+// =============================================================================
+
+/// A plugin server discovery file read from `~/.eagle-plugins/servers/{pluginId}.json`.
+///
+/// Written by `eagle-plugin-server` when a plugin starts, removed on shutdown.
+/// `eagle-eye plugin list` reads these to discover running plugins.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PluginDiscovery {
+    #[serde(rename = "pluginId")]
+    pub plugin_id: String,
+    #[serde(rename = "pluginName")]
+    pub plugin_name: String,
+    pub version: String,
+    pub port: u16,
+    pub pid: u32,
+    #[serde(rename = "startedAt")]
+    pub started_at: String,
+    pub routes: Vec<PluginRoute>,
+}
+
+/// A route registered on a plugin server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginRoute {
+    pub method: String,
+    pub path: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1099,5 +1128,41 @@ mod tests {
         let json = r#"{"status": "success"}"#;
         let result: SwitchLibraryResult = serde_json::from_str(json).unwrap();
         assert!(matches!(result.status, Status::Success));
+    }
+
+    // =========================================================================
+    // Plugin Discovery Tests
+    // =========================================================================
+
+    #[test]
+    fn plugin_discovery_roundtrip() {
+        let json = r#"{
+            "pluginId": "abc-123",
+            "pluginName": "Test Plugin",
+            "version": "0.1.0",
+            "port": 41600,
+            "pid": 12345,
+            "startedAt": "2025-01-01T00:00:00.000Z",
+            "routes": [
+                { "method": "GET", "path": "/health" },
+                { "method": "POST", "path": "/execute" }
+            ]
+        }"#;
+        let discovery: PluginDiscovery = serde_json::from_str(json).unwrap();
+        assert_eq!(discovery.plugin_id, "abc-123");
+        assert_eq!(discovery.plugin_name, "Test Plugin");
+        assert_eq!(discovery.port, 41600);
+        assert_eq!(discovery.pid, 12345);
+        assert_eq!(discovery.routes.len(), 2);
+        assert_eq!(discovery.routes[0].method, "GET");
+        assert_eq!(discovery.routes[0].path, "/health");
+    }
+
+    #[test]
+    fn plugin_route_roundtrip() {
+        let json = r#"{"method": "POST", "path": "/summarize"}"#;
+        let route: PluginRoute = serde_json::from_str(json).unwrap();
+        assert_eq!(route.method, "POST");
+        assert_eq!(route.path, "/summarize");
     }
 }
