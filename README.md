@@ -48,23 +48,23 @@ eagle-eye item list --count
 eagle-eye item list --json --jq '[.[] | select(.ext == "png") | .name]'
 
 # Item info
-eagle-eye item info --id ITEM_ID
+eagle-eye item info ITEM_ID
 
-# Save a thumbnail
-eagle-eye item thumbnail --id ITEM_ID > thumb.png
+# Save a thumbnail path
+eagle-eye item thumbnail ITEM_ID
 
 # Import from URL (dry-run first)
-eagle-eye item add-from-url --url "https://example.com/image.png" --dry-run
-eagle-eye item add-from-url --url "https://example.com/image.png"
+eagle-eye item add-from-url "https://example.com/image.png" "My Image" --dry-run
+eagle-eye item add-from-url "https://example.com/image.png" "My Image"
 
 # Import idempotently (skip if already exists)
-eagle-eye item add-from-url --url "https://example.com/image.png" --if-exists skip
+eagle-eye item add-from-url "https://example.com/image.png" "My Image" --if-exists skip
 
 # Batch update via stdin
 echo '["ID1","ID2","ID3"]' | eagle-eye item update --stdin --tags "reviewed"
 
 # Move to trash (requires --force)
-eagle-eye item move-to-trash --id ITEM_ID --force
+eagle-eye item move-to-trash ITEM_ID --force
 
 # List folders as tree
 eagle-eye folder list
@@ -93,17 +93,17 @@ eagle-eye library icon > icon.png
 | Command | Description |
 |---------|-------------|
 | `item list` | List items (with filters: `--ext`, `--keyword`, `--folder`, `--tags`, `--order`, `--limit`, `--offset`) |
-| `item info --id ID` | Get item details |
-| `item thumbnail --id ID` | Get item thumbnail (binary, pipe to file) |
-| `item update --id ID` | Update item properties (name, tags, annotation, url, star, rating) |
-| `item add-from-url --url URL` | Import from URL |
-| `item add-from-urls --json JSON` | Batch import from URLs |
-| `item add-from-path --path PATH` | Import from local file |
-| `item add-from-paths --json JSON` | Batch import from local files |
-| `item add-bookmark --url URL --name NAME` | Add a bookmark |
-| `item refresh-palette --id ID` | Refresh color palette |
-| `item refresh-thumbnail --id ID` | Refresh thumbnail |
-| `item move-to-trash --id ID --force` | Move to trash (requires `--force`) |
+| `item info ID` | Get item details |
+| `item thumbnail ID` | Get item thumbnail path |
+| `item update ID` | Update item properties (tags, annotation, url, star) |
+| `item add-from-url URL NAME` | Import from URL |
+| `item add-from-urls JSON` | Batch import from URLs |
+| `item add-from-path PATH NAME` | Import from local file |
+| `item add-from-paths JSON` | Batch import from local files |
+| `item add-bookmark URL NAME` | Add a bookmark |
+| `item refresh-palette ID` | Refresh color palette |
+| `item refresh-thumbnail ID` | Refresh thumbnail |
+| `item move-to-trash ID --force` | Move to trash (requires `--force`) |
 
 ### `folder`
 
@@ -111,9 +111,9 @@ eagle-eye library icon > icon.png
 |---------|-------------|
 | `folder list` | List all folders (tree view) |
 | `folder list-recent` | List recently used folders |
-| `folder create --name NAME` | Create a folder |
-| `folder rename --id ID --name NAME` | Rename a folder |
-| `folder update --id ID` | Update folder properties |
+| `folder create NAME [PARENT_ID]` | Create a folder |
+| `folder rename FOLDER_ID NEW_NAME` | Rename a folder |
+| `folder update FOLDER_ID [NAME] [DESC] [COLOR]` | Update folder properties |
 
 ### `library`
 
@@ -123,7 +123,7 @@ eagle-eye library icon > icon.png
 | `library history` | Library path history |
 | `library switch --path PATH` | Switch to a different library |
 | `library current` | Current working library path |
-| `library icon` | Library icon (binary, pipe to file) |
+| `library icon` | Library icon path |
 
 ### `tag`
 
@@ -139,8 +139,8 @@ eagle-eye library icon > icon.png
 | Command | Description |
 |---------|-------------|
 | `plugin list` | Discover running plugin servers |
-| `plugin routes --name NAME` | List routes for a plugin |
-| `plugin call --name NAME --route ROUTE` | Call a plugin endpoint |
+| `plugin routes PLUGIN_ID` | List routes for a plugin |
+| `plugin call PLUGIN_ID METHOD PATH` | Call a plugin endpoint |
 
 ### `completions`
 
@@ -187,13 +187,13 @@ eagle-eye is designed for shell pipelines and AI agent workflows:
 
 ```bash
 # List all PNG items, get just IDs
-eagle-eye item list --ext png -o id
+eagle-eye item list --ext png --output id
 
 # Count items by extension
 eagle-eye item list --json --jq '[.[].ext] | group_by(.) | map({ext: .[0], count: length})'
 
 # Refresh thumbnails for items matching a keyword
-eagle-eye item list --keyword "photo" -o id | eagle-eye item refresh-thumbnail --stdin
+eagle-eye item list --keyword "photo" --output id | eagle-eye item refresh-thumbnail --stdin
 
 # Export folder list as CSV
 eagle-eye folder list --output csv > folders.csv
@@ -205,7 +205,7 @@ eagle-eye item list --json --jq '[.[] | select(.tags | length == 0) | .id]'
 cat ids.txt | eagle-eye item move-to-trash --stdin --force
 
 # Null-delimited output for paths with spaces
-eagle-eye item list --print0 -o path | xargs -0 ls -la
+eagle-eye item list --print0 --output path | xargs -0 ls -la
 ```
 
 ## Exit Codes
