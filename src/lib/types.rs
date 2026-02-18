@@ -318,13 +318,17 @@ pub struct ItemInfoData {
     pub annotation: String,
     #[serde(rename = "modificationTime")]
     pub modification_time: u64,
-    pub width: u64,
-    pub height: u64,
+    pub width: Option<u64>,
+    pub height: Option<u64>,
     #[serde(rename = "noThumbnail")]
     pub no_thumbnail: Option<bool>,
+    #[serde(rename = "noPreview")]
+    pub no_preview: Option<bool>,
     #[serde(rename = "lastModified")]
-    pub last_modified: u64,
-    pub palettes: Vec<Palettes>,
+    pub last_modified: Option<u64>,
+    pub btime: Option<u64>,
+    pub mtime: Option<u64>,
+    pub palettes: Option<Vec<Palettes>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -490,8 +494,14 @@ pub struct ItemListData {
     pub modification_time: u64,
     pub height: Option<u64>,
     pub width: Option<u64>,
+    #[serde(rename = "noThumbnail")]
+    pub no_thumbnail: Option<bool>,
+    #[serde(rename = "noPreview")]
+    pub no_preview: Option<bool>,
     #[serde(rename = "lastModified")]
     pub last_modified: Option<u64>,
+    pub btime: Option<u64>,
+    pub mtime: Option<u64>,
     pub palettes: Option<Vec<Palettes>>,
 }
 
@@ -1124,7 +1134,7 @@ mod tests {
         }"#;
         let result: GetItemInfoResult = serde_json::from_str(json).unwrap();
         assert_eq!(result.data.id, "ITEM123");
-        assert_eq!(result.data.width, 512);
+        assert_eq!(result.data.width, Some(512));
         assert!(!result.data.is_deleted);
     }
 
