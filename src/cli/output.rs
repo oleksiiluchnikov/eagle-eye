@@ -22,6 +22,8 @@ pub enum OutputFormat {
     Compact,
     Ndjson,
     Table,
+    /// Comma-separated values with header row.
+    Csv,
     /// One ID per line (extracts the `id` field from each object).
     Id,
     /// One path per line (extracts the `path` field from each object).
@@ -66,6 +68,7 @@ pub fn resolve_config(matches: &ArgMatches) -> OutputConfig {
             "compact" => OutputFormat::Compact,
             "ndjson" => OutputFormat::Ndjson,
             "table" => OutputFormat::Table,
+            "csv" => OutputFormat::Csv,
             "id" => OutputFormat::Id,
             "path" => OutputFormat::Path,
             _ => OutputFormat::Json,
@@ -211,6 +214,9 @@ fn write_formatted(value: &Value, config: &OutputConfig) -> Result<(), Box<dyn s
         }
         OutputFormat::Table => {
             render_table(value, config.no_header, &mut out)?;
+        }
+        OutputFormat::Csv => {
+            render_csv(value, config.no_header, &mut out)?;
         }
         OutputFormat::Id => {
             render_field_lines(value, "id", config.print0, &mut out)?;
@@ -478,6 +484,75 @@ fn render_single_object_table<W: Write>(
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// CSV rendering
+// ---------------------------------------------------------------------------
+
+/// Render a JSON value as CSV (RFC 4180 quoting).
+///
+/// - Array of objects: columns from first object's keys.
+/// - Single object: two-column KEY,VALUE layout.
+/// - Scalars / non-object arrays: fall back to JSON pretty-print.
+fn render_csv<W: Write>(
+    value: &Value,
+    no_header: bool,
+    out: &mut W,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match value {
+        Value::Array(arr) if !arr.is_empty() && arr[0].is_object() => {
+            let columns: Vec<String> = if let Value::Object(first) = &arr[0] {
+                first.keys().cloned().collect()
+            } else {
+                return Ok(());
+            };
+
+            if !no_header {
+                let header: String = columns
+                    .iter()
+                    .map(|c| csv_escape(c))
+                    .collect::<Vec<_>>()
+                    .join(",");
+                writeln!(out, "{}", header)?;
+            }
+
+            for item in arr {
+                let row: String = columns
+                    .iter()
+                    .map(|col| {
+                        let cell = format_cell(item.get(col).unwrap_or(&Value::Null));
+                        csv_escape(&cell)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(",");
+                writeln!(out, "{}", row)?;
+            }
+        }
+        Value::Object(map) => {
+            if !no_header {
+                writeln!(out, "key,value")?;
+            }
+            for (key, val) in map {
+                let cell = format_cell(val);
+                writeln!(out, "{},{}", csv_escape(key), csv_escape(&cell))?;
+            }
+        }
+        _ => {
+            serde_json::to_writer_pretty(&mut *out, value)?;
+            writeln!(out)?;
+        }
+    }
+    Ok(())
+}
+
+/// RFC 4180 CSV field escaping: quote the field if it contains comma, double-quote, or newline.
+fn csv_escape(field: &str) -> String {
+    if field.contains(',') || field.contains('"') || field.contains('\n') {
+        format!("\"{}\"", field.replace('"', "\"\""))
+    } else {
+        field.to_string()
+    }
 }
 
 /// Format a JSON value as a compact cell string for table display.
@@ -966,5 +1041,82 @@ mod tests {
     fn output_error_json_mode() {
         // output_error writes to stderr; just verify it doesn't panic
         output_error("test error", true);
+    }
+
+    // ---- CSV rendering -------------------------------------------------------
+
+    #[test]
+    fn csv_array_of_objects() {
+        let value = json!([
+            {"id": "a", "name": "Alpha"},
+            {"id": "b", "name": "Beta"}
+        ]);
+        let mut buf = Vec::new();
+        render_csv(&value, false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert!(result.starts_with("id,name\n"));
+        assert!(result.contains("a,Alpha\n"));
+        assert!(result.contains("b,Beta\n"));
+    }
+
+    #[test]
+    fn csv_array_no_header() {
+        let value = json!([{"id": "a", "name": "Alpha"}]);
+        let mut buf = Vec::new();
+        render_csv(&value, true, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert!(!result.contains("id,name"));
+        assert!(result.contains("a,Alpha"));
+    }
+
+    #[test]
+    fn csv_single_object() {
+        let value = json!({"id": "abc", "name": "Test"});
+        let mut buf = Vec::new();
+        render_csv(&value, false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert!(result.starts_with("key,value\n"));
+        assert!(result.contains("id,abc"));
+        assert!(result.contains("name,Test"));
+    }
+
+    #[test]
+    fn csv_escape_comma() {
+        assert_eq!(csv_escape("hello, world"), "\"hello, world\"");
+    }
+
+    #[test]
+    fn csv_escape_quotes() {
+        assert_eq!(csv_escape("say \"hi\""), "\"say \"\"hi\"\"\"");
+    }
+
+    #[test]
+    fn csv_escape_plain() {
+        assert_eq!(csv_escape("hello"), "hello");
+    }
+
+    #[test]
+    fn csv_field_with_comma_in_data() {
+        let value = json!([{"tags": "a, b, c", "id": "1"}]);
+        let mut buf = Vec::new();
+        render_csv(&value, false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        // The tags field should be quoted because it contains commas
+        assert!(result.contains("\"a, b, c\""));
+    }
+
+    #[test]
+    fn csv_scalar_fallback() {
+        let value = json!(42);
+        let mut buf = Vec::new();
+        render_csv(&value, false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert_eq!(result.trim(), "42");
+    }
+
+    #[test]
+    fn output_format_csv_variant() {
+        assert_eq!(OutputFormat::Csv, OutputFormat::Csv);
+        assert_ne!(OutputFormat::Csv, OutputFormat::Table);
     }
 }

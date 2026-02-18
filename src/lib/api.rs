@@ -452,6 +452,19 @@ impl<'a> LibraryRequest<'a> {
             .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
             .await
     }
+
+    /// Get the library icon as raw image bytes.
+    ///
+    /// Unlike other endpoints, this returns binary data (PNG/JPEG), not JSON.
+    /// - `params`: Query parameters containing the library path.
+    pub async fn icon(&self, params: GetLibraryIconParams) -> Result<Vec<u8>, Box<dyn Error>> {
+        let uri = self
+            .client
+            .endpoint(Self::RESOURCE, "icon", Some(params.to_query_string()))?;
+        self.client
+            .execute_raw_request(uri, Method::GET, Body::empty())
+            .await
+    }
 }
 
 // Tag

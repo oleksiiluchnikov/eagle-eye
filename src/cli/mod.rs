@@ -29,7 +29,7 @@ pub fn get_matches() -> ArgMatches {
             Arg::new("output")
                 .long("output")
                 .value_name("FORMAT")
-                .help("Output format: json, compact, ndjson, table, id, path")
+                .help("Output format: json, compact, ndjson, table, csv, id, path")
                 .global(true),
         )
         .arg(
