@@ -52,6 +52,11 @@ pub async fn execute(
     let path_str = matches.get_one::<String>("path").expect("path is required");
     let name = matches.get_one::<String>("name").expect("name is required");
 
+    if config.dry_run {
+        eprintln!("dry-run: would add item from path {}", path_str);
+        return Ok(());
+    }
+
     let path = Path::new(path_str);
     let website = matches.get_one::<String>("website").map(|s| s.as_str());
     let annotation = matches.get_one::<String>("annotation").map(|s| s.as_str());

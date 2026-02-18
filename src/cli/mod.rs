@@ -29,7 +29,7 @@ pub fn get_matches() -> ArgMatches {
             Arg::new("output")
                 .long("output")
                 .value_name("FORMAT")
-                .help("Output format: json, compact, ndjson, table")
+                .help("Output format: json, compact, ndjson, table, id, path")
                 .global(true),
         )
         .arg(
@@ -53,6 +53,43 @@ pub fn get_matches() -> ArgMatches {
                 .global(true)
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("debug")
+                .long("debug")
+                .help("Log HTTP request/response details to stderr")
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("port")
+                .long("port")
+                .value_name("PORT")
+                .help("Eagle server port (default: 41595)")
+                .global(true)
+                .value_parser(clap::value_parser!(u16)),
+        )
+        .arg(
+            Arg::new("dry-run")
+                .long("dry-run")
+                .help("Preview changes without executing (mutations only)")
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("print0")
+                .long("print0")
+                .help("Null-delimited output (for xargs -0)")
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("quiet")
+                .long("quiet")
+                .short('q')
+                .help("Suppress non-essential stderr output")
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
+        )
         .subcommand(app::build())
         .subcommand(folder::build())
         .subcommand(item::build())
@@ -62,9 +99,23 @@ pub fn get_matches() -> ArgMatches {
         .get_matches()
 }
 
+/// Returns true if the user requested JSON mode (for structured error output).
+pub fn is_json_mode(matches: &ArgMatches) -> bool {
+    matches.get_flag("json")
+        || matches
+            .get_one::<String>("output")
+            .is_some_and(|f| f == "json" || f == "compact")
+}
+
 pub async fn execute() -> Result<(), Box<dyn std::error::Error>> {
     let matches = get_matches();
-    let eagle_client = lib::client::EagleClient::new(HOST, PORT);
+    execute_with_matches(&matches).await
+}
+
+pub async fn execute_with_matches(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    let port = matches.get_one::<u16>("port").copied().unwrap_or(PORT);
+    let debug = matches.get_flag("debug");
+    let eagle_client = lib::client::EagleClient::with_debug(HOST, port, debug);
 
     match matches.subcommand() {
         Some(("app", app_matches)) => app::execute(&eagle_client, app_matches).await,

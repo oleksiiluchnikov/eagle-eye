@@ -95,6 +95,10 @@ pub async fn execute(
                 .expect("folder_name is required");
             let parent = sub_matches.get_one::<String>("parent_folder_id");
             let parent = parent.and_then(|p| if p.is_empty() { None } else { Some(p.as_str()) });
+            if config.dry_run {
+                eprintln!("dry-run: would create folder \"{}\"", folder_name);
+                return Ok(());
+            }
             let data = client.folder().create(folder_name, parent).await?.data;
             output::output(&data, &config)?;
         }
@@ -115,6 +119,10 @@ pub async fn execute(
             let new_color = sub_matches.get_one::<String>("new_color");
             let new_color =
                 new_color.and_then(|c| if c.is_empty() { None } else { Some(c.as_str()) });
+            if config.dry_run {
+                eprintln!("dry-run: would update folder {}", folder_id);
+                return Ok(());
+            }
             let data = client
                 .folder()
                 .update(folder_id, new_name, new_description, new_color)

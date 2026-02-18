@@ -45,6 +45,11 @@ pub async fn execute(
     let config = resolve_config(matches);
     let id = matches.get_one::<String>("id").expect("id is required");
 
+    if config.dry_run {
+        eprintln!("dry-run: would update item {}", id);
+        return Ok(());
+    }
+
     let tags: Option<Vec<String>> = matches
         .get_one::<String>("tags")
         .map(|t| t.split(',').map(|s| s.trim().to_string()).collect());

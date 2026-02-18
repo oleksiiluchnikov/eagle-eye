@@ -14,6 +14,14 @@ pub async fn execute(
         .get_one::<String>("new_name")
         .expect("new_name is required");
 
+    if config.dry_run {
+        eprintln!(
+            "dry-run: would rename folder {} to \"{}\"",
+            folder_id, new_name
+        );
+        return Ok(());
+    }
+
     let data = client.folder().rename(folder_id, new_name).await?.data;
     output::output(&data, &config)?;
     Ok(())
