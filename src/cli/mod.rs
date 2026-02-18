@@ -28,8 +28,29 @@ pub fn get_matches() -> ArgMatches {
             Arg::new("output")
                 .long("output")
                 .value_name("FORMAT")
-                .help("Output format: json, compact")
+                .help("Output format: json, compact, ndjson, table")
                 .global(true),
+        )
+        .arg(
+            Arg::new("fields")
+                .long("fields")
+                .value_name("FIELDS")
+                .help("Comma-separated field projection (e.g. --fields id,name,tags)")
+                .global(true),
+        )
+        .arg(
+            Arg::new("count")
+                .long("count")
+                .help("Print count of results instead of data")
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("no-header")
+                .long("no-header")
+                .help("Omit table headers (for awk/cut processing)")
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
         )
         .subcommand(app::build())
         .subcommand(folder::build())

@@ -1,4 +1,4 @@
-use super::output::{self, resolve_format};
+use super::output::{self, resolve_config};
 use crate::lib::client::EagleClient;
 use clap::{ArgMatches, Command};
 
@@ -15,24 +15,24 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let fmt = resolve_format(matches);
+    let config = resolve_config(matches);
 
     match matches.subcommand() {
         Some(("list", _)) => {
             let result = client.tag().list().await?;
-            output::output(&result.data, &fmt)?;
+            output::output(&result.data, &config)?;
         }
         Some(("all", _)) => {
             let result = client.tag().all().await?;
-            output::output(&result.data, &fmt)?;
+            output::output(&result.data, &config)?;
         }
         Some(("list-recent", _)) => {
             let result = client.tag().list_recent().await?;
-            output::output(&result.data, &fmt)?;
+            output::output(&result.data, &config)?;
         }
         Some(("groups", _)) => {
             let result = client.tag().groups().await?;
-            output::output(&result.data, &fmt)?;
+            output::output(&result.data, &config)?;
         }
         _ => {
             eprintln!("Error: No subcommand was used. Try: list, all, list-recent, groups");

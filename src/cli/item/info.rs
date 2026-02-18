@@ -1,4 +1,4 @@
-use super::super::output::{self, resolve_format};
+use super::super::output::{self, resolve_config};
 use crate::lib::client::EagleClient;
 use crate::lib::types::{GetItemInfoParams, ItemInfoData};
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -17,7 +17,7 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let fmt = resolve_format(matches);
+    let config = resolve_config(matches);
     let raw_id = matches.get_one::<String>("id").expect("id is required");
 
     let query_params = GetItemInfoParams {
@@ -25,6 +25,6 @@ pub async fn execute(
     };
 
     let data: ItemInfoData = client.item().info(query_params).await?.data;
-    output::output(&data, &fmt)?;
+    output::output(&data, &config)?;
     Ok(())
 }
