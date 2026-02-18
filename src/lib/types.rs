@@ -647,6 +647,23 @@ pub struct SwitchLibraryResult {
     pub status: Status,
 }
 
+/// Parameters for `GET /api/library/icon`.
+///
+/// Returns raw image bytes (not JSON). Requires the library path.
+#[derive(Debug, Serialize)]
+pub struct GetLibraryIconParams {
+    pub library_path: String,
+}
+
+impl QueryParams for GetLibraryIconParams {
+    fn to_query_string(&self) -> String {
+        format!(
+            "libraryPath={}",
+            percent_encode(self.library_path.as_bytes(), NON_ALPHANUMERIC)
+        )
+    }
+}
+
 /// Move items to trash.
 ///
 /// Eagle API: `POST /api/item/moveToTrash` with body `{ "itemIds": [...] }`.
@@ -1185,5 +1202,29 @@ mod tests {
         let serialized = serde_json::to_string(&result).unwrap();
         let deserialized: MoveToTrashResult = serde_json::from_str(&serialized).unwrap();
         assert!(matches!(deserialized.status, Status::Success));
+    }
+
+    // =========================================================================
+    // GetLibraryIconParams Tests
+    // =========================================================================
+
+    #[test]
+    fn library_icon_params_basic() {
+        let params = GetLibraryIconParams {
+            library_path: "/Users/test/Library.library".to_string(),
+        };
+        let qs = params.to_query_string();
+        assert!(qs.starts_with("libraryPath="));
+        // Path separators and special chars should be percent-encoded
+        assert!(qs.contains("%2F")); // / encoded
+    }
+
+    #[test]
+    fn library_icon_params_with_spaces() {
+        let params = GetLibraryIconParams {
+            library_path: "/Users/test/My Library.library".to_string(),
+        };
+        let qs = params.to_query_string();
+        assert!(qs.contains("%20")); // space encoded
     }
 }

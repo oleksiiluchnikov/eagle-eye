@@ -84,6 +84,50 @@ impl EagleClient {
         decode_body(response).await
     }
 
+    /// Execute a request and return the raw response bytes (for binary endpoints like library/icon).
+    pub async fn execute_raw_request(
+        &self,
+        uri: Uri,
+        method: hyper::Method,
+        body: Body,
+    ) -> Result<Vec<u8>, Box<dyn Error>> {
+        if self.debug {
+            eprintln!("> {} {}", method, uri);
+        }
+
+        let start = Instant::now();
+        let request = Request::builder()
+            .method(method.clone())
+            .uri(uri)
+            .body(body)?;
+
+        let response = self.http_client.request(request).await?;
+        let status = response.status();
+        let elapsed = start.elapsed();
+
+        if self.debug {
+            let content_type = response
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("unknown");
+            eprintln!(
+                "< {} ({:.0?}) content-type={}",
+                status, elapsed, content_type
+            );
+        }
+
+        if status != StatusCode::OK {
+            return Err(Box::new(std::io::Error::other(format!(
+                "Server returned status {}",
+                status
+            ))));
+        }
+
+        let bytes = hyper::body::to_bytes(response.into_body()).await?;
+        Ok(bytes.to_vec())
+    }
+
     /// Get a request builder for the application resource
     pub fn application(&self) -> ApplicationRequest<'_> {
         ApplicationRequest::new(self)

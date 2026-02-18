@@ -1,6 +1,8 @@
 use super::output::{self, output_plain, resolve_config};
 use crate::lib::client::EagleClient;
+use crate::lib::types::GetLibraryIconParams;
 use clap::{Arg, ArgMatches, Command};
+use std::io::{self, Write};
 use std::path::Path;
 
 pub async fn execute(
@@ -52,6 +54,20 @@ pub async fn execute(
             } else {
                 output::output(&data.library, &config)?;
             }
+        }
+        Some(("icon", icon_matches)) => {
+            let library_path = if let Some(p) = icon_matches.get_one::<String>("library-path") {
+                p.clone()
+            } else {
+                // Default: use current library path
+                let data = client.library().info().await?.data;
+                data.library.path.clone()
+            };
+            let params = GetLibraryIconParams { library_path };
+            let bytes = client.library().icon(params).await?;
+            let mut out = io::stdout().lock();
+            out.write_all(&bytes)?;
+            out.flush()?;
         }
         _ => {
             eprintln!("Error: No subcommand was used. Try: info, history, switch, current");
@@ -130,6 +146,17 @@ pub fn build() -> Command {
                         .long("name")
                         .help("Current working library name")
                         .action(clap::ArgAction::SetTrue),
+                ),
+        )
+        .subcommand(
+            Command::new("icon")
+                .about("Get library icon (writes raw image bytes to stdout)")
+                .arg(
+                    Arg::new("library-path")
+                        .short('l')
+                        .long("library-path")
+                        .value_name("PATH")
+                        .help("Library path (defaults to current library)"),
                 ),
         )
 }
