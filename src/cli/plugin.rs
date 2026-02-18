@@ -1,5 +1,4 @@
 use super::output::{self, resolve_config};
-use crate::lib::client::EagleClient;
 use crate::lib::types::{PluginDiscovery, Status};
 use clap::{Arg, ArgMatches, Command};
 use serde::Deserialize;
@@ -234,8 +233,6 @@ async fn call_plugin(
     path: &str,
     body: Option<&str>,
 ) -> Result<serde_json::Value, Box<dyn Error>> {
-    let client = EagleClient::new("127.0.0.1", plugin.port);
-
     // Build URI directly (plugin servers don't use /api/{resource}/{action} format)
     let uri: hyper::Uri = format!("http://127.0.0.1:{}{}", plugin.port, path).parse()?;
 
@@ -245,15 +242,43 @@ async fn call_plugin(
         None => hyper::Body::empty(),
     };
 
-    let response: PluginResponse = client.execute_request(uri, http_method, http_body).await?;
+    // Use raw hyper client to handle non-200 responses with error envelopes
+    let http_client = hyper::Client::new();
+    let request = hyper::Request::builder()
+        .method(http_method)
+        .uri(uri)
+        .header("Content-Type", "application/json")
+        .body(http_body)?;
 
-    match response.status {
-        Status::Success => Ok(response.data.unwrap_or(serde_json::Value::Null)),
-        Status::Error => {
-            let msg = response
-                .message
-                .unwrap_or_else(|| "Plugin returned error".to_string());
-            Err(msg.into())
+    let response = http_client.request(request).await?;
+    let status_code = response.status();
+    let body_bytes = hyper::body::to_bytes(response.into_body()).await?;
+    let body_str = String::from_utf8(body_bytes.to_vec())?;
+
+    // Try to parse as plugin response envelope
+    match serde_json::from_str::<PluginResponse>(&body_str) {
+        Ok(envelope) => match envelope.status {
+            Status::Success => Ok(envelope.data.unwrap_or(serde_json::Value::Null)),
+            Status::Error => {
+                let msg = envelope
+                    .message
+                    .unwrap_or_else(|| format!("Plugin returned error (HTTP {})", status_code));
+                Err(msg.into())
+            }
+        },
+        Err(_) => {
+            // Non-JSON response or unexpected format
+            if status_code.is_success() {
+                // Return raw body as a JSON string
+                Ok(serde_json::Value::String(body_str))
+            } else {
+                Err(format!(
+                    "Plugin returned HTTP {} with body: {}",
+                    status_code,
+                    body_str.chars().take(200).collect::<String>()
+                )
+                .into())
+            }
         }
     }
 }
