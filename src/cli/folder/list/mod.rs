@@ -1,3 +1,4 @@
+use super::super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use crate::lib::types::Child;
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -51,6 +52,14 @@ pub async fn execute(
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let data: Vec<Child> = client.folder().list().await?.data;
+    let fmt = resolve_format(matches);
+
+    // When an explicit output format is requested, output raw JSON data
+    // instead of the human-friendly tree/name listing.
+    let explicit_format = matches.get_flag("json") || matches.get_one::<String>("output").is_some();
+    if explicit_format {
+        return output::output(&data, &fmt);
+    }
 
     let max_depth = matches.get_one::<usize>("max_depth").copied();
 

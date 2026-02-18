@@ -213,6 +213,20 @@ pub struct AddItemFromUrlResult {
     pub status: Status,
 }
 
+/// Parameters for adding an item from a URL via `/api/item/addFromURL`.
+#[derive(Debug, Default)]
+pub struct AddFromUrlParams {
+    pub url: String,
+    pub name: String,
+    pub website: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub annotation: Option<String>,
+    pub folder_id: Option<String>,
+    pub star: Option<u8>,
+    pub modification_time: Option<u64>,
+    pub headers: Option<OutgoingHttpHeaders>,
+}
+
 /// Represents a single item for batch URL import via `/api/item/addFromURLs`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Item {

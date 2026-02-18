@@ -214,36 +214,35 @@ impl<'a> ItemRequest<'a> {
 
     /// Add an item from a URL.
     ///
-    /// - `url`: The URL to download from.
-    /// - `name`: Display name for the item.
-    /// - `website`: Optional source website URL.
-    /// - `tags`: Optional tags.
-    /// - `annotation`: Optional annotation.
-    /// - `folder_id`: Optional target folder ID.
+    /// Takes an `AddFromUrlParams` struct with required `url`/`name` and optional fields.
     pub async fn add_from_url(
         &self,
-        url: &str,
-        name: &str,
-        website: Option<&str>,
-        tags: Option<&[String]>,
-        annotation: Option<&str>,
-        folder_id: Option<&str>,
+        params: &AddFromUrlParams,
     ) -> Result<AddItemFromUrlResult, Box<dyn Error>> {
         let mut data = json!({
-            "url": url,
-            "name": name,
+            "url": params.url,
+            "name": params.name,
         });
-        if let Some(website) = website {
+        if let Some(ref website) = params.website {
             data["website"] = json!(website);
         }
-        if let Some(tags) = tags {
+        if let Some(ref tags) = params.tags {
             data["tags"] = json!(tags);
         }
-        if let Some(annotation) = annotation {
+        if let Some(ref annotation) = params.annotation {
             data["annotation"] = json!(annotation);
         }
-        if let Some(folder_id) = folder_id {
+        if let Some(ref folder_id) = params.folder_id {
             data["folderId"] = json!(folder_id);
+        }
+        if let Some(star) = params.star {
+            data["star"] = json!(star);
+        }
+        if let Some(modification_time) = params.modification_time {
+            data["modificationTime"] = json!(modification_time);
+        }
+        if let Some(ref headers) = params.headers {
+            data["headers"] = json!(headers);
         }
         let uri = self.client.endpoint(Self::RESOURCE, "addFromURL", None)?;
         self.client
@@ -335,6 +334,7 @@ impl<'a> ItemRequest<'a> {
     /// - `base64`: Optional base64-encoded thumbnail image.
     /// - `tags`: Optional tags.
     /// - `folder_id`: Optional target folder ID.
+    /// - `modification_time`: Optional modification time (Unix timestamp in milliseconds).
     pub async fn add_bookmark(
         &self,
         url: &str,
@@ -342,6 +342,7 @@ impl<'a> ItemRequest<'a> {
         base64: Option<&str>,
         tags: Option<&[String]>,
         folder_id: Option<&str>,
+        modification_time: Option<u64>,
     ) -> Result<AddBookmarkResult, Box<dyn Error>> {
         let mut data = json!({
             "url": url,
@@ -355,6 +356,9 @@ impl<'a> ItemRequest<'a> {
         }
         if let Some(folder_id) = folder_id {
             data["folderId"] = json!(folder_id);
+        }
+        if let Some(modification_time) = modification_time {
+            data["modificationTime"] = json!(modification_time);
         }
         let uri = self.client.endpoint(Self::RESOURCE, "addBookmark", None)?;
         self.client

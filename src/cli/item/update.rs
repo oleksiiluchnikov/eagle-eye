@@ -1,3 +1,4 @@
+use super::super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 
@@ -41,13 +42,8 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let id = match matches.get_one::<String>("id") {
-        Some(id) => id,
-        None => {
-            println!("No ID provided");
-            return Ok(());
-        }
-    };
+    let fmt = resolve_format(matches);
+    let id = matches.get_one::<String>("id").expect("id is required");
 
     let tags: Option<Vec<String>> = matches
         .get_one::<String>("tags")
@@ -56,10 +52,11 @@ pub async fn execute(
     let url = matches.get_one::<String>("url").map(|s| s.as_str());
     let star = matches.get_one::<u8>("star").copied();
 
-    let result = client
+    let data = client
         .item()
         .update(id, tags.as_deref(), annotation, url, star)
-        .await?;
-    println!("{}", serde_json::to_string_pretty(&result)?);
+        .await?
+        .data;
+    output::output(&data, &fmt)?;
     Ok(())
 }

@@ -1,3 +1,4 @@
+use super::super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 
@@ -34,37 +35,41 @@ pub fn build() -> Command {
                 .value_name("ID")
                 .help("Target folder ID"),
         )
+        .arg(
+            Arg::new("modification-time")
+                .long("modification-time")
+                .value_name("TIMESTAMP")
+                .help("Modification time (Unix timestamp in milliseconds)")
+                .value_parser(clap::value_parser!(u64)),
+        )
 }
 
 pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let url = match matches.get_one::<String>("url") {
-        Some(u) => u,
-        None => {
-            println!("No URL provided");
-            return Ok(());
-        }
-    };
-    let name = match matches.get_one::<String>("name") {
-        Some(n) => n,
-        None => {
-            println!("No name provided");
-            return Ok(());
-        }
-    };
+    let fmt = resolve_format(matches);
+    let url = matches.get_one::<String>("url").expect("url is required");
+    let name = matches.get_one::<String>("name").expect("name is required");
 
     let base64 = matches.get_one::<String>("base64").map(|s| s.as_str());
     let tags: Option<Vec<String>> = matches
         .get_one::<String>("tags")
         .map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
     let folder_id = matches.get_one::<String>("folder-id").map(|s| s.as_str());
+    let modification_time = matches.get_one::<u64>("modification-time").copied();
 
     let result = client
         .item()
-        .add_bookmark(url, name, base64, tags.as_deref(), folder_id)
+        .add_bookmark(
+            url,
+            name,
+            base64,
+            tags.as_deref(),
+            folder_id,
+            modification_time,
+        )
         .await?;
-    println!("{}", serde_json::to_string_pretty(&result)?);
+    output::output(&result, &fmt)?;
     Ok(())
 }

@@ -1,3 +1,4 @@
+use super::super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 
@@ -16,15 +17,10 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let id = match matches.get_one::<String>("id") {
-        Some(id) => id,
-        None => {
-            println!("No ID provided");
-            return Ok(());
-        }
-    };
+    let fmt = resolve_format(matches);
+    let id = matches.get_one::<String>("id").expect("id is required");
 
     let result = client.item().refresh_thumbnail(id).await?;
-    println!("{}", serde_json::to_string_pretty(&result)?);
+    output::output(&result, &fmt)?;
     Ok(())
 }

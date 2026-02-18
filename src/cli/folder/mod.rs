@@ -1,5 +1,6 @@
 pub mod list;
 pub mod rename;
+use super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 
@@ -82,43 +83,48 @@ pub async fn execute(
         Some(("list", matches)) => {
             list::execute(client, matches).await?;
         }
-        Some(("list-recent", _)) => {
-            let result = client.folder().list_recent().await?;
-            println!("{}", serde_json::to_string_pretty(&result)?);
+        Some(("list-recent", sub_matches)) => {
+            let fmt = resolve_format(sub_matches);
+            let data = client.folder().list_recent().await?.data;
+            output::output(&data, &fmt)?;
         }
-        Some(("create", matches)) => {
-            let folder_name = matches
+        Some(("create", sub_matches)) => {
+            let fmt = resolve_format(sub_matches);
+            let folder_name = sub_matches
                 .get_one::<String>("folder_name")
                 .expect("folder_name is required");
-            let parent = matches.get_one::<String>("parent_folder_id");
+            let parent = sub_matches.get_one::<String>("parent_folder_id");
             let parent = parent.and_then(|p| if p.is_empty() { None } else { Some(p.as_str()) });
-            let result = client.folder().create(folder_name, parent).await?;
-            println!("{}", serde_json::to_string_pretty(&result)?);
+            let data = client.folder().create(folder_name, parent).await?.data;
+            output::output(&data, &fmt)?;
         }
-        Some(("rename", matches)) => {
-            rename::execute(client, matches).await?;
+        Some(("rename", sub_matches)) => {
+            rename::execute(client, sub_matches).await?;
         }
-        Some(("update", matches)) => {
-            let folder_id = matches
+        Some(("update", sub_matches)) => {
+            let fmt = resolve_format(sub_matches);
+            let folder_id = sub_matches
                 .get_one::<String>("folder_id")
                 .expect("folder_id is required");
-            let new_name = matches.get_one::<String>("new_name");
+            let new_name = sub_matches.get_one::<String>("new_name");
             let new_name =
                 new_name.and_then(|n| if n.is_empty() { None } else { Some(n.as_str()) });
-            let new_description = matches.get_one::<String>("new_description");
+            let new_description = sub_matches.get_one::<String>("new_description");
             let new_description =
                 new_description.and_then(|d| if d.is_empty() { None } else { Some(d.as_str()) });
-            let new_color = matches.get_one::<String>("new_color");
+            let new_color = sub_matches.get_one::<String>("new_color");
             let new_color =
                 new_color.and_then(|c| if c.is_empty() { None } else { Some(c.as_str()) });
-            let result = client
+            let data = client
                 .folder()
                 .update(folder_id, new_name, new_description, new_color)
-                .await?;
-            println!("{}", serde_json::to_string_pretty(&result)?);
+                .await?
+                .data;
+            output::output(&data, &fmt)?;
         }
         _ => {
-            println!("No subcommand was used. Try: eagle-eye folder --help");
+            eprintln!("Error: No subcommand was used. Try: eagle-eye folder --help");
+            std::process::exit(output::exit_code::USAGE);
         }
     }
 

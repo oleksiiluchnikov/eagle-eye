@@ -1,3 +1,4 @@
+use super::output::{self, output_plain, resolve_format};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 use std::path::Path;
@@ -6,46 +7,50 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let fmt = resolve_format(matches);
+
     match matches.subcommand() {
         Some(("info", info_matches)) => {
             let data = client.library().info().await?.data;
             if info_matches.get_flag("folders") {
-                println!("{}", serde_json::to_string_pretty(&data.folders)?);
+                output::output(&data.folders, &fmt)?;
             } else if info_matches.get_flag("smart_folders") {
-                println!("{}", serde_json::to_string_pretty(&data.smart_folders)?);
+                output::output(&data.smart_folders, &fmt)?;
             } else if info_matches.get_flag("quick_access") {
-                println!("{}", serde_json::to_string_pretty(&data.quick_access)?);
+                output::output(&data.quick_access, &fmt)?;
             } else if info_matches.get_flag("tags_groups") {
-                println!("{}", serde_json::to_string_pretty(&data.tags_groups)?);
+                output::output(&data.tags_groups, &fmt)?;
             } else if info_matches.get_flag("modification_time") {
-                println!("{}", data.modification_time);
+                output_plain(&data.modification_time.to_string());
             } else {
-                println!("{}", serde_json::to_string_pretty(&data)?);
+                output::output(&data, &fmt)?;
             }
         }
         Some(("history", _)) => {
             let result = client.library().history().await?;
-            println!("{}", serde_json::to_string_pretty(&result.data)?);
+            output::output(&result.data, &fmt)?;
         }
         Some(("switch", switch_matches)) => {
             let path = switch_matches
                 .get_one::<String>("path")
                 .expect("path is required");
             let result = client.library().switch(Path::new(path)).await?;
-            println!("{}", serde_json::to_string_pretty(&result)?);
+            // switch returns only {status}, output it directly
+            output::output(&result, &fmt)?;
         }
         Some(("current", current_matches)) => {
             let data = client.library().info().await?.data;
             if current_matches.get_flag("path") {
-                println!("{}", data.library.path);
+                output_plain(&data.library.path);
             } else if current_matches.get_flag("name") {
-                println!("{}", data.library.name);
+                output_plain(&data.library.name);
             } else {
-                println!("{}", serde_json::to_string_pretty(&data.library)?);
+                output::output(&data.library, &fmt)?;
             }
         }
         _ => {
-            println!("No subcommand was used. Try: info, history, switch, current");
+            eprintln!("Error: No subcommand was used. Try: info, history, switch, current");
+            std::process::exit(super::output::exit_code::USAGE);
         }
     }
     Ok(())

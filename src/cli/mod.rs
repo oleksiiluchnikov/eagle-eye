@@ -1,10 +1,11 @@
 use crate::lib;
-use clap::{ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command};
 
 pub mod app;
 pub mod folder;
 pub mod item;
 pub mod library;
+pub mod output;
 pub mod tag;
 
 pub const PORT: u16 = 41595;
@@ -16,6 +17,20 @@ pub fn get_matches() -> ArgMatches {
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
         .arg_required_else_help(true)
+        .arg(
+            Arg::new("json")
+                .long("json")
+                .help("Output raw JSON (shorthand for --output json)")
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("output")
+                .long("output")
+                .value_name("FORMAT")
+                .help("Output format: json, compact")
+                .global(true),
+        )
         .subcommand(app::build())
         .subcommand(folder::build())
         .subcommand(item::build())
@@ -37,8 +52,8 @@ pub async fn execute() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(("tag", tag_matches)) => tag::execute(&eagle_client, tag_matches).await,
         _ => {
-            println!("No subcommand was used");
-            Ok(())
+            eprintln!("Error: No subcommand was used");
+            std::process::exit(output::exit_code::USAGE);
         }
     }
 }

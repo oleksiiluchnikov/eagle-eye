@@ -1,3 +1,4 @@
+use super::output;
 use crate::lib::client::EagleClient;
 use clap::{ArgMatches, Command};
 pub mod add_bookmark;
@@ -51,7 +52,8 @@ pub async fn execute(
             refresh_thumbnail::execute(client, sub_matches).await?
         }
         _ => {
-            println!("No subcommand was used");
+            eprintln!("Error: No subcommand was used. Try: eagle-eye item --help");
+            std::process::exit(output::exit_code::USAGE);
         }
     }
     Ok(())
