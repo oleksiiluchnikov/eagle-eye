@@ -1,4 +1,4 @@
-use super::output::{self, output_plain, resolve_format};
+use super::output::{self, output_plain, resolve_config};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 
@@ -21,8 +21,8 @@ pub async fn execute(
     if matches.get_flag("version") {
         output_plain(&data.version);
     } else {
-        let fmt = resolve_format(matches);
-        output::output(&data, &fmt)?;
+        let config = resolve_config(matches);
+        output::output(&data, &config)?;
     }
     Ok(())
 }

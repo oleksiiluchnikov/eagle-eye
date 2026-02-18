@@ -1,4 +1,4 @@
-use super::super::output::{self, resolve_format};
+use super::super::output::{self, resolve_config};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 use std::path::Path;
@@ -48,7 +48,7 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let fmt = resolve_format(matches);
+    let config = resolve_config(matches);
     let path_str = matches.get_one::<String>("path").expect("path is required");
     let name = matches.get_one::<String>("name").expect("name is required");
 
@@ -64,6 +64,6 @@ pub async fn execute(
         .item()
         .add_from_path(path, name, website, annotation, tags.as_deref(), folder_id)
         .await?;
-    output::output(&result, &fmt)?;
+    output::output(&result, &config)?;
     Ok(())
 }

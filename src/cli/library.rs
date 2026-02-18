@@ -1,4 +1,4 @@
-use super::output::{self, output_plain, resolve_format};
+use super::output::{self, output_plain, resolve_config};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 use std::path::Path;
@@ -7,28 +7,28 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let fmt = resolve_format(matches);
+    let config = resolve_config(matches);
 
     match matches.subcommand() {
         Some(("info", info_matches)) => {
             let data = client.library().info().await?.data;
             if info_matches.get_flag("folders") {
-                output::output(&data.folders, &fmt)?;
+                output::output(&data.folders, &config)?;
             } else if info_matches.get_flag("smart_folders") {
-                output::output(&data.smart_folders, &fmt)?;
+                output::output(&data.smart_folders, &config)?;
             } else if info_matches.get_flag("quick_access") {
-                output::output(&data.quick_access, &fmt)?;
+                output::output(&data.quick_access, &config)?;
             } else if info_matches.get_flag("tags_groups") {
-                output::output(&data.tags_groups, &fmt)?;
+                output::output(&data.tags_groups, &config)?;
             } else if info_matches.get_flag("modification_time") {
                 output_plain(&data.modification_time.to_string());
             } else {
-                output::output(&data, &fmt)?;
+                output::output(&data, &config)?;
             }
         }
         Some(("history", _)) => {
             let result = client.library().history().await?;
-            output::output(&result.data, &fmt)?;
+            output::output(&result.data, &config)?;
         }
         Some(("switch", switch_matches)) => {
             let path = switch_matches
@@ -36,7 +36,7 @@ pub async fn execute(
                 .expect("path is required");
             let result = client.library().switch(Path::new(path)).await?;
             // switch returns only {status}, output it directly
-            output::output(&result, &fmt)?;
+            output::output(&result, &config)?;
         }
         Some(("current", current_matches)) => {
             let data = client.library().info().await?.data;
@@ -45,7 +45,7 @@ pub async fn execute(
             } else if current_matches.get_flag("name") {
                 output_plain(&data.library.name);
             } else {
-                output::output(&data.library, &fmt)?;
+                output::output(&data.library, &config)?;
             }
         }
         _ => {

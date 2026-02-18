@@ -1,4 +1,4 @@
-use super::super::output::{self, resolve_format};
+use super::super::output::{self, resolve_config};
 use crate::lib::client::EagleClient;
 use crate::lib::types::{AddFromUrlParams, OutgoingHttpHeaders};
 use clap::{Arg, ArgMatches, Command};
@@ -70,7 +70,7 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let fmt = resolve_format(matches);
+    let config = resolve_config(matches);
     let url = matches.get_one::<String>("url").expect("url is required");
     let name = matches.get_one::<String>("name").expect("name is required");
 
@@ -103,6 +103,6 @@ pub async fn execute(
     };
 
     let result = client.item().add_from_url(&params).await?;
-    output::output(&result, &fmt)?;
+    output::output(&result, &config)?;
     Ok(())
 }

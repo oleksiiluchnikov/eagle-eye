@@ -1,4 +1,4 @@
-use super::super::output::{self, resolve_format};
+use super::super::output::{self, resolve_config};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 
@@ -42,7 +42,7 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let fmt = resolve_format(matches);
+    let config = resolve_config(matches);
     let id = matches.get_one::<String>("id").expect("id is required");
 
     let tags: Option<Vec<String>> = matches
@@ -57,6 +57,6 @@ pub async fn execute(
         .update(id, tags.as_deref(), annotation, url, star)
         .await?
         .data;
-    output::output(&data, &fmt)?;
+    output::output(&data, &config)?;
     Ok(())
 }

@@ -1,6 +1,6 @@
 pub mod list;
 pub mod rename;
-use super::output::{self, resolve_format};
+use super::output::{self, resolve_config};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 
@@ -84,25 +84,25 @@ pub async fn execute(
             list::execute(client, matches).await?;
         }
         Some(("list-recent", sub_matches)) => {
-            let fmt = resolve_format(sub_matches);
+            let config = resolve_config(sub_matches);
             let data = client.folder().list_recent().await?.data;
-            output::output(&data, &fmt)?;
+            output::output(&data, &config)?;
         }
         Some(("create", sub_matches)) => {
-            let fmt = resolve_format(sub_matches);
+            let config = resolve_config(sub_matches);
             let folder_name = sub_matches
                 .get_one::<String>("folder_name")
                 .expect("folder_name is required");
             let parent = sub_matches.get_one::<String>("parent_folder_id");
             let parent = parent.and_then(|p| if p.is_empty() { None } else { Some(p.as_str()) });
             let data = client.folder().create(folder_name, parent).await?.data;
-            output::output(&data, &fmt)?;
+            output::output(&data, &config)?;
         }
         Some(("rename", sub_matches)) => {
             rename::execute(client, sub_matches).await?;
         }
         Some(("update", sub_matches)) => {
-            let fmt = resolve_format(sub_matches);
+            let config = resolve_config(sub_matches);
             let folder_id = sub_matches
                 .get_one::<String>("folder_id")
                 .expect("folder_id is required");
@@ -120,7 +120,7 @@ pub async fn execute(
                 .update(folder_id, new_name, new_description, new_color)
                 .await?
                 .data;
-            output::output(&data, &fmt)?;
+            output::output(&data, &config)?;
         }
         _ => {
             eprintln!("Error: No subcommand was used. Try: eagle-eye folder --help");

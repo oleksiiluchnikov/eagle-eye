@@ -1,4 +1,4 @@
-use super::super::output::{self, resolve_format};
+use super::super::output::{self, resolve_config};
 use crate::lib::client::EagleClient;
 use clap::ArgMatches;
 
@@ -6,7 +6,7 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let fmt = resolve_format(matches);
+    let config = resolve_config(matches);
     let folder_id = matches
         .get_one::<String>("folder_id")
         .expect("folder_id is required");
@@ -15,6 +15,6 @@ pub async fn execute(
         .expect("new_name is required");
 
     let data = client.folder().rename(folder_id, new_name).await?.data;
-    output::output(&data, &fmt)?;
+    output::output(&data, &config)?;
     Ok(())
 }

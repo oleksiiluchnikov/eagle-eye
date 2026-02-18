@@ -1,4 +1,4 @@
-use super::super::output::{self, resolve_format};
+use super::super::output::{self, resolve_config};
 use crate::lib::client::EagleClient;
 use crate::lib::types::{GetItemListParams, ItemListData, Order};
 use clap::{Arg, ArgMatches, Command};
@@ -142,14 +142,13 @@ pub async fn execute(
 
     // When an explicit output format is requested (--json / --output),
     // output the raw item data instead of derived file paths.
-    let explicit_format = matches.get_flag("json") || matches.get_one::<String>("output").is_some();
-    if explicit_format {
-        let fmt = resolve_format(matches);
+    let config = resolve_config(matches);
+    if config.explicit {
         let length_flag = matches.get_flag("length");
         if length_flag {
             output::output_plain(&items.len().to_string());
         } else {
-            output::output(&items, &fmt)?;
+            output::output(&items, &config)?;
         }
         return Ok(());
     }
