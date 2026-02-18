@@ -2,17 +2,19 @@ use crate::lib;
 use clap::{Arg, ArgMatches, Command};
 
 pub mod app;
+pub mod completions;
 pub mod folder;
 pub mod item;
 pub mod library;
 pub mod output;
 pub mod plugin;
+pub mod stdin;
 pub mod tag;
 
 pub const PORT: u16 = 41595;
 const HOST: &str = "localhost";
 
-pub fn get_matches() -> ArgMatches {
+pub fn build_command() -> Command {
     Command::new(env!("CARGO_PKG_NAME"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .version(env!("CARGO_PKG_VERSION"))
@@ -90,13 +92,24 @@ pub fn get_matches() -> ArgMatches {
                 .global(true)
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("jq")
+                .long("jq")
+                .value_name("EXPR")
+                .help("Filter JSON output with a jq expression (bypasses --fields/--output)")
+                .global(true),
+        )
         .subcommand(app::build())
+        .subcommand(completions::build())
         .subcommand(folder::build())
         .subcommand(item::build())
         .subcommand(library::build())
         .subcommand(plugin::build())
         .subcommand(tag::build())
-        .get_matches()
+}
+
+pub fn get_matches() -> ArgMatches {
+    build_command().get_matches()
 }
 
 /// Returns true if the user requested JSON mode (for structured error output).
@@ -119,6 +132,10 @@ pub async fn execute_with_matches(matches: &ArgMatches) -> Result<(), Box<dyn st
 
     match matches.subcommand() {
         Some(("app", app_matches)) => app::execute(&eagle_client, app_matches).await,
+        Some(("completions", comp_matches)) => {
+            completions::execute(comp_matches);
+            Ok(())
+        }
         Some(("folder", folder_matches)) => folder::execute(&eagle_client, folder_matches).await,
         Some(("item", item_matches)) => item::execute(&eagle_client, item_matches).await,
         Some(("library", library_matches)) => {

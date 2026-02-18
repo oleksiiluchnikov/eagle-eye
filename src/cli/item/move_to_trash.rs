@@ -1,7 +1,7 @@
 use super::super::output::{self, resolve_config};
+use super::super::stdin::read_ids_from_stdin;
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
-use std::io::{self, BufRead};
 
 pub fn build() -> Command {
     Command::new("move-to-trash")
@@ -23,41 +23,6 @@ pub fn build() -> Command {
                 .help("Read item IDs from stdin (JSON array or newline-delimited)")
                 .action(clap::ArgAction::SetTrue),
         )
-}
-
-/// Parse IDs from stdin: accepts a JSON array of strings or newline-delimited plain IDs.
-fn read_ids_from_stdin() -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let stdin = io::stdin();
-    let mut raw = String::new();
-    for line in stdin.lock().lines() {
-        let line = line?;
-        raw.push_str(&line);
-        raw.push('\n');
-    }
-    parse_ids_input(&raw)
-}
-
-/// Parse IDs from raw input: accepts a JSON array of strings or newline/null-delimited plain IDs.
-fn parse_ids_input(raw: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let raw = raw.trim();
-
-    if raw.is_empty() {
-        return Ok(vec![]);
-    }
-
-    // Try JSON array first
-    if raw.starts_with('[') {
-        let ids: Vec<String> = serde_json::from_str(raw)?;
-        return Ok(ids);
-    }
-
-    // Fall back to newline-delimited (also handles null-delimited via --print0 piping)
-    let ids: Vec<String> = raw
-        .split(['\n', '\0'])
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
-    Ok(ids)
 }
 
 pub async fn execute(
@@ -100,9 +65,10 @@ pub async fn execute(
     Ok(())
 }
 
+// Tests for parse_ids_input have been moved to cli::stdin module.
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::super::stdin::parse_ids_input;
 
     #[test]
     fn parse_ids_json_array() {

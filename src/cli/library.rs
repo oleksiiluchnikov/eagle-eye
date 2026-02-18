@@ -99,7 +99,6 @@ pub fn build() -> Command {
                 )
                 .arg(
                     Arg::new("quick_access")
-                        .short('q')
                         .long("quick-access")
                         .help("Show quick access")
                         .action(clap::ArgAction::SetTrue),

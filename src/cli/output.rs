@@ -13,6 +13,8 @@ pub mod exit_code {
     pub const USAGE: i32 = 2;
     /// Server not running, connection refused, timeout.
     pub const CONNECTION: i32 = 3;
+    /// Batch operation partially succeeded (some items failed).
+    pub const PARTIAL: i32 = 4;
 }
 
 /// Supported output formats.
@@ -51,6 +53,8 @@ pub struct OutputConfig {
     pub dry_run: bool,
     /// Suppress non-essential stderr output (`--quiet`).
     pub quiet: bool,
+    /// jq filter expression (`--jq`). When set, bypasses format/fields and outputs raw JSON.
+    pub jq: Option<String>,
 }
 
 /// Build an `OutputConfig` from CLI matches.
@@ -91,6 +95,7 @@ pub fn resolve_config(matches: &ArgMatches) -> OutputConfig {
     let print0 = matches.get_flag("print0");
     let dry_run = matches.get_flag("dry-run");
     let quiet = matches.get_flag("quiet");
+    let jq = matches.get_one::<String>("jq").cloned();
 
     OutputConfig {
         format,
@@ -101,6 +106,7 @@ pub fn resolve_config(matches: &ArgMatches) -> OutputConfig {
         print0,
         dry_run,
         quiet,
+        jq,
     }
 }
 
@@ -151,6 +157,51 @@ fn count_value(value: &Value) -> usize {
 }
 
 // ---------------------------------------------------------------------------
+// jq filter (via jaq)
+// ---------------------------------------------------------------------------
+
+/// Apply a jq expression to a JSON value using the jaq engine.
+///
+/// Returns a vector of results (jq can produce multiple outputs).
+/// When used via `--jq`, the output bypasses the normal format pipeline
+/// and prints raw JSON results directly.
+pub fn apply_jq_filter(input: &Value, filter_expr: &str) -> Result<Vec<Value>, String> {
+    use jaq_core::{load, Compiler, Ctx, RcIter};
+    use jaq_json::Val;
+    use load::{Arena, File, Loader};
+
+    let loader = Loader::new(jaq_std::defs().chain(jaq_json::defs()));
+    let arena = Arena::default();
+    let program = File {
+        code: filter_expr,
+        path: (),
+    };
+    let modules = loader
+        .load(&arena, program)
+        .map_err(|errs| format!("jq parse error: {:?}", errs))?;
+    let filter = Compiler::default()
+        .with_funs(jaq_std::funs().chain(jaq_json::funs()))
+        .compile(modules)
+        .map_err(|errs| format!("jq compile error: {:?}", errs))?;
+
+    let inputs = RcIter::new(core::iter::empty());
+    let input_val = Val::from(input.clone());
+    let mut results = Vec::new();
+
+    for item in filter.run((Ctx::new([], &inputs), input_val)) {
+        match item {
+            Ok(val) => {
+                let json_val: Value = Value::from(val);
+                results.push(json_val);
+            }
+            Err(err) => return Err(format!("jq runtime error: {}", err)),
+        }
+    }
+
+    Ok(results)
+}
+
+// ---------------------------------------------------------------------------
 // Public output functions
 // ---------------------------------------------------------------------------
 
@@ -180,6 +231,29 @@ pub fn output_value(
 
 /// The unified output pipeline.
 fn output_pipeline(value: Value, config: &OutputConfig) -> Result<(), Box<dyn std::error::Error>> {
+    // 0. --jq: apply filter and output raw JSON results, bypassing format/fields/count
+    if let Some(ref expr) = config.jq {
+        let results = apply_jq_filter(&value, expr).map_err(|e| -> Box<dyn std::error::Error> {
+            eprintln!("Error: {}", e);
+            std::process::exit(exit_code::USAGE);
+        })?;
+        let mut out = io::stdout().lock();
+        match results.len() {
+            0 => { /* no output */ }
+            1 => {
+                serde_json::to_writer_pretty(&mut out, &results[0])?;
+                writeln!(out)?;
+            }
+            _ => {
+                for r in &results {
+                    serde_json::to_writer_pretty(&mut out, r)?;
+                    writeln!(out)?;
+                }
+            }
+        }
+        return Ok(());
+    }
+
     // 1. --count: output count and return early
     if config.count {
         let count = count_value(&value);
@@ -848,6 +922,7 @@ mod tests {
             print0: false,
             dry_run: false,
             quiet: false,
+            jq: None,
         };
         assert_eq!(config.format, OutputFormat::Json);
         assert!(!config.explicit);
@@ -866,6 +941,7 @@ mod tests {
             print0: false,
             dry_run: false,
             quiet: false,
+            jq: None,
         };
         assert_eq!(config.fields.as_ref().unwrap().len(), 2);
     }
@@ -1014,6 +1090,7 @@ mod tests {
             print0: true,
             dry_run: true,
             quiet: true,
+            jq: None,
         };
         assert!(config.print0);
         assert!(config.dry_run);
@@ -1118,5 +1195,89 @@ mod tests {
     fn output_format_csv_variant() {
         assert_eq!(OutputFormat::Csv, OutputFormat::Csv);
         assert_ne!(OutputFormat::Csv, OutputFormat::Table);
+    }
+
+    // ---- jq filter -----------------------------------------------------------
+
+    #[test]
+    fn jq_identity_filter() {
+        let input = json!({"id": "abc", "name": "test"});
+        let results = apply_jq_filter(&input, ".").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], input);
+    }
+
+    #[test]
+    fn jq_field_access() {
+        let input = json!({"id": "abc", "name": "test"});
+        let results = apply_jq_filter(&input, ".name").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], json!("test"));
+    }
+
+    #[test]
+    fn jq_array_length() {
+        let input = json!([1, 2, 3, 4, 5]);
+        let results = apply_jq_filter(&input, "length").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], json!(5));
+    }
+
+    #[test]
+    fn jq_array_iterator() {
+        let input = json!([{"id": "a"}, {"id": "b"}]);
+        let results = apply_jq_filter(&input, ".[].id").unwrap();
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0], json!("a"));
+        assert_eq!(results[1], json!("b"));
+    }
+
+    #[test]
+    fn jq_select_filter() {
+        let input = json!([
+            {"id": "a", "star": 3},
+            {"id": "b", "star": 5},
+            {"id": "c", "star": 1}
+        ]);
+        let results = apply_jq_filter(&input, "[.[] | select(.star >= 3)]").unwrap();
+        assert_eq!(results.len(), 1);
+        let arr = results[0].as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+        assert_eq!(arr[0]["id"], json!("a"));
+        assert_eq!(arr[1]["id"], json!("b"));
+    }
+
+    #[test]
+    fn jq_map_construct() {
+        let input = json!([{"id": "a", "name": "Alpha"}, {"id": "b", "name": "Beta"}]);
+        let results = apply_jq_filter(&input, "[.[] | {id, upper: .name}]").unwrap();
+        assert_eq!(results.len(), 1);
+        let arr = results[0].as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+        assert_eq!(arr[0]["id"], json!("a"));
+    }
+
+    #[test]
+    fn jq_invalid_filter() {
+        let input = json!({"id": "abc"});
+        let result = apply_jq_filter(&input, ".[invalid");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn jq_null_input() {
+        let input = json!(null);
+        let results = apply_jq_filter(&input, ".").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], json!(null));
+    }
+
+    #[test]
+    fn jq_keys_filter() {
+        let input = json!({"id": "abc", "name": "test", "ext": "png"});
+        let results = apply_jq_filter(&input, "keys").unwrap();
+        assert_eq!(results.len(), 1);
+        let arr = results[0].as_array().unwrap();
+        assert_eq!(arr.len(), 3);
     }
 }
