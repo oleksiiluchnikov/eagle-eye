@@ -35,7 +35,11 @@ pub fn build() -> Command {
                         .help("HTTP method (GET, POST, PUT, DELETE)")
                         .required(true),
                 )
-                .arg(Arg::new("path").help("Route path (e.g. /health)").required(true))
+                .arg(
+                    Arg::new("path")
+                        .help("Route path (e.g. /health)")
+                        .required(true),
+                )
                 .arg(
                     Arg::new("body")
                         .long("body")
@@ -122,19 +126,11 @@ fn read_discovery_files() -> Result<Vec<PluginDiscovery>, Box<dyn Error>> {
             Ok(contents) => match serde_json::from_str::<PluginDiscovery>(&contents) {
                 Ok(discovery) => plugins.push(discovery),
                 Err(e) => {
-                    eprintln!(
-                        "Warning: invalid discovery file {}: {}",
-                        path.display(),
-                        e
-                    );
+                    eprintln!("Warning: invalid discovery file {}: {}", path.display(), e);
                 }
             },
             Err(e) => {
-                eprintln!(
-                    "Warning: could not read {}: {}",
-                    path.display(),
-                    e
-                );
+                eprintln!("Warning: could not read {}: {}", path.display(), e);
             }
         }
     }

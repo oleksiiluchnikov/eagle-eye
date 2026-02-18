@@ -5,11 +5,14 @@ use hyper::StatusCode;
 use hyper::{Body, Client, Request, Uri};
 use serde::Deserialize;
 use std::error::Error;
+use std::time::Instant;
 
 /// Client for communicating with the Eagle server
 pub struct EagleClient {
     authority: Authority,
     http_client: Client<HttpConnector>,
+    /// When true, log HTTP request/response details to stderr.
+    debug: bool,
 }
 
 impl EagleClient {
@@ -18,6 +21,16 @@ impl EagleClient {
         EagleClient {
             authority: Authority::from_maybe_shared(format!("{}:{}", host, port)).unwrap(),
             http_client: Client::new(),
+            debug: false,
+        }
+    }
+
+    /// Create a new client with debug mode enabled.
+    pub fn with_debug(host: &str, port: u16, debug: bool) -> Self {
+        EagleClient {
+            authority: Authority::from_maybe_shared(format!("{}:{}", host, port)).unwrap(),
+            http_client: Client::new(),
+            debug,
         }
     }
 
@@ -44,13 +57,28 @@ impl EagleClient {
         method: hyper::Method,
         body: Body,
     ) -> Result<T, Box<dyn Error>> {
-        let request = Request::builder().method(method).uri(uri).body(body)?;
+        if self.debug {
+            eprintln!("> {} {}", method, uri);
+        }
+
+        let start = Instant::now();
+        let request = Request::builder()
+            .method(method.clone())
+            .uri(uri)
+            .body(body)?;
 
         let response = self.http_client.request(request).await?;
-        if response.status() != StatusCode::OK {
+        let status = response.status();
+        let elapsed = start.elapsed();
+
+        if self.debug {
+            eprintln!("< {} ({:.0?})", status, elapsed);
+        }
+
+        if status != StatusCode::OK {
             return Err(Box::new(std::io::Error::other(format!(
                 "Server returned status {}",
-                response.status()
+                status
             ))));
         }
         decode_body(response).await
@@ -118,6 +146,7 @@ mod tests {
         let client = EagleClient::new("localhost", 41595);
         // Just verify it doesn't panic - authority is private
         // The real test is that we can build URIs with it
+        assert!(!client.debug);
         let _ = client;
     }
 
@@ -126,6 +155,12 @@ mod tests {
         let client = EagleClient::new("127.0.0.1", 8080);
         let uri = client.endpoint("item", "list", None).unwrap();
         assert!(uri.to_string().contains("127.0.0.1:8080"));
+    }
+
+    #[test]
+    fn client_with_debug() {
+        let client = EagleClient::with_debug("localhost", 41595, true);
+        assert!(client.debug);
     }
 
     // =========================================================================

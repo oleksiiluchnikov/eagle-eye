@@ -164,7 +164,7 @@ pub async fn execute(
         .unwrap_or("");
     let url_flag = !url_keyword.is_empty();
 
-    let paths: Vec<_> = items
+    let paths: Vec<String> = items
         .par_iter()
         .filter(|item| {
             if url_flag && !url_keyword.is_empty() {
@@ -183,12 +183,16 @@ pub async fn execute(
                 let potential_path = library_path.join(&item_dir_name).join(&thumbnail_filename);
 
                 if potential_path.exists() {
-                    return potential_path;
+                    return potential_path.display().to_string();
                 }
             }
 
             let filename = basename.to_owned() + "." + item.ext.as_str();
-            library_path.join(item_dir_name).join(filename)
+            library_path
+                .join(item_dir_name)
+                .join(filename)
+                .display()
+                .to_string()
         })
         .collect();
 
@@ -197,9 +201,7 @@ pub async fn execute(
     if length_flag {
         println!("{}", paths.len());
     } else {
-        for path in &paths {
-            println!("{}", path.display());
-        }
+        output::output_lines(&paths, &config)?;
     }
 
     Ok(())

@@ -78,9 +78,8 @@ pub async fn execute(
         return Ok(());
     }
 
-    for child in data {
-        println!("{}", child.name);
-    }
+    let names: Vec<String> = data.iter().map(|c| c.name.clone()).collect();
+    output::output_lines(&names, &config)?;
 
     Ok(())
 }

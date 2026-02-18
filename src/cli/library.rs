@@ -31,9 +31,14 @@ pub async fn execute(
             output::output(&result.data, &config)?;
         }
         Some(("switch", switch_matches)) => {
+            let config = resolve_config(switch_matches);
             let path = switch_matches
                 .get_one::<String>("path")
                 .expect("path is required");
+            if config.dry_run {
+                eprintln!("dry-run: would switch to library {}", path);
+                return Ok(());
+            }
             let result = client.library().switch(Path::new(path)).await?;
             // switch returns only {status}, output it directly
             output::output(&result, &config)?;

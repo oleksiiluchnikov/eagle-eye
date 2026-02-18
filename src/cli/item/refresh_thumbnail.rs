@@ -20,6 +20,11 @@ pub async fn execute(
     let config = resolve_config(matches);
     let id = matches.get_one::<String>("id").expect("id is required");
 
+    if config.dry_run {
+        eprintln!("dry-run: would refresh thumbnail for item {}", id);
+        return Ok(());
+    }
+
     let result = client.item().refresh_thumbnail(id).await?;
     output::output(&result, &config)?;
     Ok(())

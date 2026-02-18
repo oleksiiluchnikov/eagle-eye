@@ -52,6 +52,11 @@ pub async fn execute(
     let url = matches.get_one::<String>("url").expect("url is required");
     let name = matches.get_one::<String>("name").expect("name is required");
 
+    if config.dry_run {
+        eprintln!("dry-run: would add bookmark {}", url);
+        return Ok(());
+    }
+
     let base64 = matches.get_one::<String>("base64").map(|s| s.as_str());
     let tags: Option<Vec<String>> = matches
         .get_one::<String>("tags")

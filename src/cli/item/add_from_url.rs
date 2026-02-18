@@ -74,6 +74,11 @@ pub async fn execute(
     let url = matches.get_one::<String>("url").expect("url is required");
     let name = matches.get_one::<String>("name").expect("name is required");
 
+    if config.dry_run {
+        eprintln!("dry-run: would add item from URL {}", url);
+        return Ok(());
+    }
+
     let website = matches.get_one::<String>("website").cloned();
     let tags: Option<Vec<String>> = matches
         .get_one::<String>("tags")

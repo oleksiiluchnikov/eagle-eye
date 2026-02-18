@@ -22,6 +22,10 @@ pub enum OutputFormat {
     Compact,
     Ndjson,
     Table,
+    /// One ID per line (extracts the `id` field from each object).
+    Id,
+    /// One path per line (extracts the `path` field from each object).
+    Path,
 }
 
 /// Resolved output configuration from CLI flags.
@@ -39,6 +43,12 @@ pub struct OutputConfig {
     pub count: bool,
     /// Omit table headers (`--no-header`).
     pub no_header: bool,
+    /// Null-delimited output instead of newlines (`--print0`).
+    pub print0: bool,
+    /// Preview changes without executing (`--dry-run`).
+    pub dry_run: bool,
+    /// Suppress non-essential stderr output (`--quiet`).
+    pub quiet: bool,
 }
 
 /// Build an `OutputConfig` from CLI matches.
@@ -56,6 +66,8 @@ pub fn resolve_config(matches: &ArgMatches) -> OutputConfig {
             "compact" => OutputFormat::Compact,
             "ndjson" => OutputFormat::Ndjson,
             "table" => OutputFormat::Table,
+            "id" => OutputFormat::Id,
+            "path" => OutputFormat::Path,
             _ => OutputFormat::Json,
         }
     } else if io::stdout().is_terminal() {
@@ -73,6 +85,9 @@ pub fn resolve_config(matches: &ArgMatches) -> OutputConfig {
 
     let count = matches.get_flag("count");
     let no_header = matches.get_flag("no-header");
+    let print0 = matches.get_flag("print0");
+    let dry_run = matches.get_flag("dry-run");
+    let quiet = matches.get_flag("quiet");
 
     OutputConfig {
         format,
@@ -80,6 +95,9 @@ pub fn resolve_config(matches: &ArgMatches) -> OutputConfig {
         fields,
         count,
         no_header,
+        print0,
+        dry_run,
+        quiet,
     }
 }
 
@@ -193,6 +211,119 @@ fn write_formatted(value: &Value, config: &OutputConfig) -> Result<(), Box<dyn s
         }
         OutputFormat::Table => {
             render_table(value, config.no_header, &mut out)?;
+        }
+        OutputFormat::Id => {
+            render_field_lines(value, "id", config.print0, &mut out)?;
+        }
+        OutputFormat::Path => {
+            render_field_lines(value, "path", config.print0, &mut out)?;
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Field-line rendering (id / path formats)
+// ---------------------------------------------------------------------------
+
+/// Render a single field from each object, one per line.
+///
+/// - Array of objects: extract `field_name` from each, print one per line.
+/// - Single object: extract `field_name`, print it.
+/// - Scalar string: print it directly (supports raw string arrays).
+fn render_field_lines<W: Write>(
+    value: &Value,
+    field_name: &str,
+    print0: bool,
+    out: &mut W,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let delim: &[u8] = if print0 { b"\0" } else { b"\n" };
+
+    match value {
+        Value::Array(arr) => {
+            for item in arr {
+                let text = match item {
+                    Value::Object(map) => match map.get(field_name) {
+                        Some(Value::String(s)) => s.clone(),
+                        Some(v) => v.to_string(),
+                        None => String::new(),
+                    },
+                    Value::String(s) => s.clone(),
+                    other => other.to_string(),
+                };
+                out.write_all(text.as_bytes())?;
+                out.write_all(delim)?;
+            }
+        }
+        Value::Object(map) => {
+            let text = match map.get(field_name) {
+                Some(Value::String(s)) => s.clone(),
+                Some(v) => v.to_string(),
+                None => String::new(),
+            };
+            out.write_all(text.as_bytes())?;
+            out.write_all(delim)?;
+        }
+        Value::String(s) => {
+            out.write_all(s.as_bytes())?;
+            out.write_all(delim)?;
+        }
+        _ => {
+            out.write_all(value.to_string().as_bytes())?;
+            out.write_all(delim)?;
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// String-lines output (for file paths, folder names, etc.)
+// ---------------------------------------------------------------------------
+
+/// Print a list of plain strings through the output pipeline.
+///
+/// This is used by default-mode handlers (e.g. `item list`, `folder list`) that
+/// produce derived strings (file paths, folder names) rather than JSON objects.
+/// It respects `--count`, `--print0`, and structured format overrides.
+pub fn output_lines(
+    lines: &[String],
+    config: &OutputConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // --count: output count and return early
+    if config.count {
+        println!("{}", lines.len());
+        return Ok(());
+    }
+
+    // If an explicit structured format is requested, serialise the string list as JSON
+    match config.format {
+        OutputFormat::Json => {
+            let value = serde_json::to_value(lines)?;
+            let mut out = io::stdout().lock();
+            serde_json::to_writer_pretty(&mut out, &value)?;
+            writeln!(out)?;
+        }
+        OutputFormat::Compact => {
+            let value = serde_json::to_value(lines)?;
+            let mut out = io::stdout().lock();
+            serde_json::to_writer(&mut out, &value)?;
+            writeln!(out)?;
+        }
+        OutputFormat::Ndjson => {
+            let mut out = io::stdout().lock();
+            for line in lines {
+                serde_json::to_writer(&mut out, line)?;
+                writeln!(out)?;
+            }
+        }
+        _ => {
+            // Table, Id, Path all fall through to plain line output
+            let mut out = io::stdout().lock();
+            let delim: &[u8] = if config.print0 { b"\0" } else { b"\n" };
+            for line in lines {
+                out.write_all(line.as_bytes())?;
+                out.write_all(delim)?;
+            }
         }
     }
     Ok(())
@@ -390,14 +521,10 @@ pub fn output_plain(text: &str) {
 
 /// Print an error message to stderr.
 ///
-/// When `--json` is set, outputs structured JSON error.
+/// When `json_mode` is true, outputs structured JSON error.
 /// Otherwise, outputs plain text prefixed with "Error: ".
-pub fn output_error(message: &str, matches: &ArgMatches) {
-    if matches.get_flag("json")
-        || matches
-            .get_one::<String>("output")
-            .is_some_and(|f| f == "json" || f == "compact")
-    {
+pub fn output_error(message: &str, json_mode: bool) {
+    if json_mode {
         let err = serde_json::json!({
             "ok": false,
             "error": { "message": message }
@@ -643,6 +770,9 @@ mod tests {
             fields: None,
             count: false,
             no_header: false,
+            print0: false,
+            dry_run: false,
+            quiet: false,
         };
         assert_eq!(config.format, OutputFormat::Json);
         assert!(!config.explicit);
@@ -658,6 +788,9 @@ mod tests {
             fields: Some(vec!["id".to_string(), "name".to_string()]),
             count: false,
             no_header: false,
+            print0: false,
+            dry_run: false,
+            quiet: false,
         };
         assert_eq!(config.fields.as_ref().unwrap().len(), 2);
     }
@@ -706,5 +839,132 @@ mod tests {
         serde_json::to_writer(&mut buf, &data).unwrap();
         let result = String::from_utf8(buf).unwrap();
         assert_eq!(result, "{\"id\":\"abc\"}");
+    }
+
+    // ---- render_field_lines (Id/Path formats) --------------------------------
+
+    #[test]
+    fn render_field_lines_array_of_objects_id() {
+        let value = json!([
+            {"id": "AAA", "name": "Alpha"},
+            {"id": "BBB", "name": "Beta"}
+        ]);
+        let mut buf = Vec::new();
+        render_field_lines(&value, "id", false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert_eq!(result, "AAA\nBBB\n");
+    }
+
+    #[test]
+    fn render_field_lines_array_of_objects_path() {
+        let value = json!([
+            {"id": "X", "path": "/a/b/c.png"},
+            {"id": "Y", "path": "/d/e/f.jpg"}
+        ]);
+        let mut buf = Vec::new();
+        render_field_lines(&value, "path", false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert_eq!(result, "/a/b/c.png\n/d/e/f.jpg\n");
+    }
+
+    #[test]
+    fn render_field_lines_print0() {
+        let value = json!([
+            {"id": "A"},
+            {"id": "B"}
+        ]);
+        let mut buf = Vec::new();
+        render_field_lines(&value, "id", true, &mut buf).unwrap();
+        let result = buf;
+        // Should use null bytes instead of newlines
+        assert_eq!(result, b"A\0B\0");
+    }
+
+    #[test]
+    fn render_field_lines_missing_field() {
+        let value = json!([{"name": "Alpha"}, {"name": "Beta"}]);
+        let mut buf = Vec::new();
+        render_field_lines(&value, "id", false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        // Missing fields yield empty strings
+        assert_eq!(result, "\n\n");
+    }
+
+    #[test]
+    fn render_field_lines_single_object() {
+        let value = json!({"id": "SINGLE"});
+        let mut buf = Vec::new();
+        render_field_lines(&value, "id", false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert_eq!(result, "SINGLE\n");
+    }
+
+    #[test]
+    fn render_field_lines_string_array() {
+        let value = json!(["alpha", "beta", "gamma"]);
+        let mut buf = Vec::new();
+        render_field_lines(&value, "id", false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert_eq!(result, "alpha\nbeta\ngamma\n");
+    }
+
+    #[test]
+    fn render_field_lines_scalar() {
+        let value = json!("single-value");
+        let mut buf = Vec::new();
+        render_field_lines(&value, "id", false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert_eq!(result, "single-value\n");
+    }
+
+    #[test]
+    fn render_field_lines_numeric_field() {
+        let value = json!([{"id": 42}, {"id": 99}]);
+        let mut buf = Vec::new();
+        render_field_lines(&value, "id", false, &mut buf).unwrap();
+        let result = String::from_utf8(buf).unwrap();
+        assert_eq!(result, "42\n99\n");
+    }
+
+    // ---- OutputConfig with new fields ----------------------------------------
+
+    #[test]
+    fn output_config_print0_dry_run_quiet() {
+        let config = OutputConfig {
+            format: OutputFormat::Id,
+            explicit: true,
+            fields: None,
+            count: false,
+            no_header: false,
+            print0: true,
+            dry_run: true,
+            quiet: true,
+        };
+        assert!(config.print0);
+        assert!(config.dry_run);
+        assert!(config.quiet);
+        assert_eq!(config.format, OutputFormat::Id);
+    }
+
+    #[test]
+    fn output_format_id_path_variants() {
+        assert_eq!(OutputFormat::Id, OutputFormat::Id);
+        assert_eq!(OutputFormat::Path, OutputFormat::Path);
+        assert_ne!(OutputFormat::Id, OutputFormat::Path);
+        assert_ne!(OutputFormat::Id, OutputFormat::Json);
+    }
+
+    // ---- output_error --------------------------------------------------------
+
+    #[test]
+    fn output_error_plain_text() {
+        // output_error writes to stderr; just verify it doesn't panic
+        output_error("test error", false);
+    }
+
+    #[test]
+    fn output_error_json_mode() {
+        // output_error writes to stderr; just verify it doesn't panic
+        output_error("test error", true);
     }
 }

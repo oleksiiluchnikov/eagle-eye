@@ -32,6 +32,11 @@ pub async fn execute(
     let items: Vec<PathItem> = serde_json::from_str(json_str)?;
     let folder_id = matches.get_one::<String>("folder-id").map(|s| s.as_str());
 
+    if config.dry_run {
+        eprintln!("dry-run: would add {} item(s) from paths", items.len());
+        return Ok(());
+    }
+
     let result = client.item().add_from_paths(&items, folder_id).await?;
     output::output(&result, &config)?;
     Ok(())

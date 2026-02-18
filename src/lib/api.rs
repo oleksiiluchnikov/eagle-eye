@@ -397,6 +397,20 @@ impl<'a> ItemRequest<'a> {
             .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
             .await
     }
+
+    /// Move items to trash.
+    ///
+    /// - `item_ids`: Slice of item IDs to move to trash.
+    pub async fn move_to_trash(
+        &self,
+        item_ids: &[String],
+    ) -> Result<MoveToTrashResult, Box<dyn Error>> {
+        let data = json!({ "itemIds": item_ids });
+        let uri = self.client.endpoint(Self::RESOURCE, "moveToTrash", None)?;
+        self.client
+            .execute_request(uri, Method::POST, Body::from(serde_json::to_string(&data)?))
+            .await
+    }
 }
 
 // Library

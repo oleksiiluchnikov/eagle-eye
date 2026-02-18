@@ -647,6 +647,15 @@ pub struct SwitchLibraryResult {
     pub status: Status,
 }
 
+/// Move items to trash.
+///
+/// Eagle API: `POST /api/item/moveToTrash` with body `{ "itemIds": [...] }`.
+/// Returns only `{ "status": "success" }`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MoveToTrashResult {
+    pub status: Status,
+}
+
 // =============================================================================
 // Plugin discovery types (NOT part of Eagle's API — local file protocol)
 // =============================================================================
@@ -1164,5 +1173,17 @@ mod tests {
         let route: PluginRoute = serde_json::from_str(json).unwrap();
         assert_eq!(route.method, "POST");
         assert_eq!(route.path, "/summarize");
+    }
+
+    #[test]
+    fn move_to_trash_result_roundtrip() {
+        let json = r#"{"status": "success"}"#;
+        let result: MoveToTrashResult = serde_json::from_str(json).unwrap();
+        assert!(matches!(result.status, Status::Success));
+
+        // Verify serialization round-trip
+        let serialized = serde_json::to_string(&result).unwrap();
+        let deserialized: MoveToTrashResult = serde_json::from_str(&serialized).unwrap();
+        assert!(matches!(deserialized.status, Status::Success));
     }
 }

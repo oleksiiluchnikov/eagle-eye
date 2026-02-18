@@ -8,6 +8,7 @@ pub mod add_from_url;
 pub mod add_from_urls;
 pub mod info;
 pub mod list;
+pub mod move_to_trash;
 pub mod refresh_palette;
 pub mod refresh_thumbnail;
 pub mod thumbnail;
@@ -27,6 +28,7 @@ pub fn build() -> Command {
         .subcommand(add_bookmark::build())
         .subcommand(refresh_palette::build())
         .subcommand(refresh_thumbnail::build())
+        .subcommand(move_to_trash::build())
 }
 
 pub async fn execute(
@@ -51,6 +53,7 @@ pub async fn execute(
         Some(("refresh-thumbnail", sub_matches)) => {
             refresh_thumbnail::execute(client, sub_matches).await?
         }
+        Some(("move-to-trash", sub_matches)) => move_to_trash::execute(client, sub_matches).await?,
         _ => {
             eprintln!("Error: No subcommand was used. Try: eagle-eye item --help");
             std::process::exit(output::exit_code::USAGE);
