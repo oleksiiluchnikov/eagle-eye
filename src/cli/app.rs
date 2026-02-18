@@ -1,3 +1,4 @@
+use super::output::{self, output_plain, resolve_format};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 
@@ -18,9 +19,10 @@ pub async fn execute(
     let data = client.application().info().await?.data;
 
     if matches.get_flag("version") {
-        println!("{}", data.version);
+        output_plain(&data.version);
     } else {
-        println!("{}", serde_json::to_string_pretty(&data)?);
+        let fmt = resolve_format(matches);
+        output::output(&data, &fmt)?;
     }
     Ok(())
 }

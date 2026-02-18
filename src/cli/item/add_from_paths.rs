@@ -1,3 +1,4 @@
+use super::super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use crate::lib::types::PathItem;
 use clap::{Arg, ArgMatches, Command};
@@ -25,18 +26,13 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let json_str = match matches.get_one::<String>("json") {
-        Some(j) => j,
-        None => {
-            println!("No JSON input provided");
-            return Ok(());
-        }
-    };
+    let fmt = resolve_format(matches);
+    let json_str = matches.get_one::<String>("json").expect("json is required");
 
     let items: Vec<PathItem> = serde_json::from_str(json_str)?;
     let folder_id = matches.get_one::<String>("folder-id").map(|s| s.as_str());
 
     let result = client.item().add_from_paths(&items, folder_id).await?;
-    println!("{}", serde_json::to_string_pretty(&result)?);
+    output::output(&result, &fmt)?;
     Ok(())
 }

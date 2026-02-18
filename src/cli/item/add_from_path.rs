@@ -1,3 +1,4 @@
+use super::super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use clap::{Arg, ArgMatches, Command};
 use std::path::Path;
@@ -47,20 +48,9 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let path_str = match matches.get_one::<String>("path") {
-        Some(p) => p,
-        None => {
-            println!("No path provided");
-            return Ok(());
-        }
-    };
-    let name = match matches.get_one::<String>("name") {
-        Some(n) => n,
-        None => {
-            println!("No name provided");
-            return Ok(());
-        }
-    };
+    let fmt = resolve_format(matches);
+    let path_str = matches.get_one::<String>("path").expect("path is required");
+    let name = matches.get_one::<String>("name").expect("name is required");
 
     let path = Path::new(path_str);
     let website = matches.get_one::<String>("website").map(|s| s.as_str());
@@ -74,6 +64,6 @@ pub async fn execute(
         .item()
         .add_from_path(path, name, website, annotation, tags.as_deref(), folder_id)
         .await?;
-    println!("{}", serde_json::to_string_pretty(&result)?);
+    output::output(&result, &fmt)?;
     Ok(())
 }

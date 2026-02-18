@@ -1,3 +1,4 @@
+use super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use clap::{ArgMatches, Command};
 
@@ -14,25 +15,28 @@ pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let fmt = resolve_format(matches);
+
     match matches.subcommand() {
         Some(("list", _)) => {
             let result = client.tag().list().await?;
-            println!("{}", serde_json::to_string_pretty(&result)?);
+            output::output(&result.data, &fmt)?;
         }
         Some(("all", _)) => {
             let result = client.tag().all().await?;
-            println!("{}", serde_json::to_string_pretty(&result)?);
+            output::output(&result.data, &fmt)?;
         }
         Some(("list-recent", _)) => {
             let result = client.tag().list_recent().await?;
-            println!("{}", serde_json::to_string_pretty(&result)?);
+            output::output(&result.data, &fmt)?;
         }
         Some(("groups", _)) => {
             let result = client.tag().groups().await?;
-            println!("{}", serde_json::to_string_pretty(&result)?);
+            output::output(&result.data, &fmt)?;
         }
         _ => {
-            println!("No subcommand was used. Try: list, all, list-recent, groups");
+            eprintln!("Error: No subcommand was used. Try: list, all, list-recent, groups");
+            std::process::exit(super::output::exit_code::USAGE);
         }
     }
 

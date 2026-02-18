@@ -1,3 +1,4 @@
+use super::super::output;
 use crate::lib::client::EagleClient;
 use crate::lib::types::{GetItemThumbnailParams, ItemThumbnailData};
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -23,6 +24,6 @@ pub async fn execute(
     };
     let thumbnail_path: ItemThumbnailData = client.item().thumbnail(query_params).await?.data;
     let path = percent_encoding::percent_decode_str(&thumbnail_path).decode_utf8()?;
-    println!("{}", path);
+    output::output_plain(&path);
     Ok(())
 }

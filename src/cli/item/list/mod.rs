@@ -1,3 +1,4 @@
+use super::super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
 use crate::lib::types::{GetItemListParams, ItemListData, Order};
 use clap::{Arg, ArgMatches, Command};
@@ -115,8 +116,8 @@ pub async fn execute(
                 query_params.order_by = Some(order);
             }
             None => {
-                eprintln!("Unknown order: '{}'. Valid values: MANUAL, CREATEDATE, -CREATEDATE, BTIME, MTIME, FILESIZE, -FILESIZE, NAME, -NAME, RESOLUTION, -RESOLUTION", order_by);
-                return Ok(());
+                eprintln!("Error: Unknown order: '{}'. Valid values: MANUAL, CREATEDATE, -CREATEDATE, BTIME, MTIME, FILESIZE, -FILESIZE, NAME, -NAME, RESOLUTION, -RESOLUTION", order_by);
+                std::process::exit(output::exit_code::USAGE);
             }
         }
     }
@@ -137,6 +138,23 @@ pub async fn execute(
         query_params.folders = Some(folders.to_owned());
     }
 
+    let items: Vec<ItemListData> = client.item().list(query_params).await?.data;
+
+    // When an explicit output format is requested (--json / --output),
+    // output the raw item data instead of derived file paths.
+    let explicit_format = matches.get_flag("json") || matches.get_one::<String>("output").is_some();
+    if explicit_format {
+        let fmt = resolve_format(matches);
+        let length_flag = matches.get_flag("length");
+        if length_flag {
+            output::output_plain(&items.len().to_string());
+        } else {
+            output::output(&items, &fmt)?;
+        }
+        return Ok(());
+    }
+
+    // Default mode: output derived file paths (human-friendly).
     let library_data = client.library().info().await?.data;
     let library_path = Path::new(&library_data.library.path).join("images");
 
@@ -146,8 +164,6 @@ pub async fn execute(
         .map(|s| s.as_str())
         .unwrap_or("");
     let url_flag = !url_keyword.is_empty();
-
-    let items: Vec<ItemListData> = client.item().list(query_params).await?.data;
 
     let paths: Vec<_> = items
         .par_iter()

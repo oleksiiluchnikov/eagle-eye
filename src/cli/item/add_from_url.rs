@@ -1,4 +1,6 @@
+use super::super::output::{self, resolve_format};
 use crate::lib::client::EagleClient;
+use crate::lib::types::{AddFromUrlParams, OutgoingHttpHeaders};
 use clap::{Arg, ArgMatches, Command};
 
 pub fn build() -> Command {
@@ -40,38 +42,67 @@ pub fn build() -> Command {
                 .value_name("ID")
                 .help("Target folder ID"),
         )
+        .arg(
+            Arg::new("star")
+                .long("star")
+                .value_name("RATING")
+                .help("Star rating (0-5)")
+                .value_parser(clap::value_parser!(u8)),
+        )
+        .arg(
+            Arg::new("modification-time")
+                .long("modification-time")
+                .value_name("TIMESTAMP")
+                .help("Modification time (Unix timestamp in milliseconds)")
+                .value_parser(clap::value_parser!(u64)),
+        )
+        .arg(
+            Arg::new("header")
+                .long("header")
+                .short('H')
+                .value_name("KEY:VALUE")
+                .help("Custom HTTP header for downloading (can be repeated)")
+                .action(clap::ArgAction::Append),
+        )
 }
 
 pub async fn execute(
     client: &EagleClient,
     matches: &ArgMatches,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let url = match matches.get_one::<String>("url") {
-        Some(u) => u,
-        None => {
-            println!("No URL provided");
-            return Ok(());
-        }
-    };
-    let name = match matches.get_one::<String>("name") {
-        Some(n) => n,
-        None => {
-            println!("No name provided");
-            return Ok(());
-        }
-    };
+    let fmt = resolve_format(matches);
+    let url = matches.get_one::<String>("url").expect("url is required");
+    let name = matches.get_one::<String>("name").expect("name is required");
 
-    let website = matches.get_one::<String>("website").map(|s| s.as_str());
+    let website = matches.get_one::<String>("website").cloned();
     let tags: Option<Vec<String>> = matches
         .get_one::<String>("tags")
         .map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
-    let annotation = matches.get_one::<String>("annotation").map(|s| s.as_str());
-    let folder_id = matches.get_one::<String>("folder-id").map(|s| s.as_str());
+    let annotation = matches.get_one::<String>("annotation").cloned();
+    let folder_id = matches.get_one::<String>("folder-id").cloned();
+    let star = matches.get_one::<u8>("star").copied();
+    let modification_time = matches.get_one::<u64>("modification-time").copied();
+    let headers: Option<OutgoingHttpHeaders> = matches.get_many::<String>("header").map(|vals| {
+        vals.filter_map(|h| {
+            let (key, value) = h.split_once(':')?;
+            Some((key.trim().to_string(), value.trim().to_string()))
+        })
+        .collect()
+    });
 
-    let result = client
-        .item()
-        .add_from_url(url, name, website, tags.as_deref(), annotation, folder_id)
-        .await?;
-    println!("{}", serde_json::to_string_pretty(&result)?);
+    let params = AddFromUrlParams {
+        url: url.to_string(),
+        name: name.to_string(),
+        website,
+        tags,
+        annotation,
+        folder_id,
+        star,
+        modification_time,
+        headers,
+    };
+
+    let result = client.item().add_from_url(&params).await?;
+    output::output(&result, &fmt)?;
     Ok(())
 }
